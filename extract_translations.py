@@ -13,22 +13,19 @@
 # <https://www.gnu.org/philosophy/free-sw.en.html>.
 
 import os
-import gi
+import sys
+import subprocess
 import click
-import requests
 import mmdtranslations
-from babel.messages import Catalog, pofile
-
-gi.require_version('Modulemd', '1.0')
-from gi.repository import Modulemd
+from babel.messages import pofile
 
 
 @click.command()
 @click.option('-b', '--branch', default="rawhide", type=str,
               help="The distribution release (Default: rawhide)",
               metavar="<branch_name>")
-@click.option('-z', '--zanata-rest-url',
-              default="https://fedora.zanata.org/rest",
+@click.option('-z', '--zanata-url',
+              default="https://fedora.zanata.org",
               type=str, help="""
 The Zanata URL
 (Default: https://fedora.zanata.org/)
@@ -44,14 +41,15 @@ The Zanata project
               type=str, help="""
 The project version.
 (Default: f29)
-""", metavar="[f28, f29, ...]")
-@click.option('-c', '--zanata-user-config', default=None,
-              type=click.Path(exists=True, readable=True),
-              help="""
-Path to the user config for Zanata. (Default: ~/.config/zanata.ini)
+""", metavar="[f28, f29, rawhide, ...]")
+@click.option("-f", "--zanata-translation-file",
+              default="fedora-modularity-translations",
+              type=str, help="""
+The name of the translated file in Zanata.
+(Default: fedora-modularity-translations)
 """)
-def main(branch, zanata_rest_url, zanata_project,
-         zanata_project_version, zanata_user_config):
+def main(branch, zanata_url, zanata_project,
+         zanata_project_version, zanata_translation_file):
     """
     Extract translations from all modules included in a particular version of
     Fedora or EPEL.
@@ -77,6 +75,20 @@ def main(branch, zanata_rest_url, zanata_project,
 
     with open("fedora-modularity-translations.pot", mode="wb") as f:
         pofile.write_po(f, catalog, sort_by_file=True)
+
+    # Use the zanata-cli to upload the pot file
+    # It would be better to use the REST API directly here, but the XML payload
+    # format is not documented.
+    zanata_args = ['/usr/bin/zanata-cli', '-B', 'push',
+                   '--url', zanata_url,
+                   '--project', zanata_project,
+                   '--project-type', 'gettext',
+                   '--project-version', zanata_project_version]
+    result = subprocess.run(zanata_args, capture_output=True)
+    if result.returncode:
+        print(result.stderr)
+        print(result.stdout)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
