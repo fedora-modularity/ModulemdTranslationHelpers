@@ -17,6 +17,8 @@ import gi
 import requests
 import sys
 
+import mmdtranslations
+
 from babel.messages import pofile
 from io import BytesIO
 
@@ -30,6 +32,8 @@ from gi.repository import Modulemd
 
 
 @click.command()
+@click.option('-d', '--debug', default=False, is_flag= True,
+              help="Add debugging output")
 @click.option('-z', '--zanata-rest-url',
               default="https://fedora.zanata.org/rest",
               type=str, help="""
@@ -54,7 +58,7 @@ The project version.
 The name of the translated file in Zanata.
 (Default: fedora-modularity-translations)
 """)
-def main(zanata_rest_url, zanata_project,
+def main(debug, zanata_rest_url, zanata_project,
          zanata_translation_file, zanata_project_version):
     """
     :param zanata_rest_url: The base URL to the zanata instance
@@ -98,14 +102,22 @@ def main(zanata_rest_url, zanata_project,
                   file=sys.stderr)
             continue
 
+        if debug:
+            print(r.text)
+
         # Read the po file into a catalog, indexed by the locale
         catalogs[loc] = pofile.read_po(
             BytesIO(r.content),
             domain="fedora-modularity-translations")
 
-        print(catalogs[loc].get(u"A command-line wrapper for git with "
-                                u"github "
-                                u"shortcuts").string)
+    translations = mmdtranslations.get_modulemd_translations_from_catalog_dict(
+        catalogs)
+
+    if debug:
+        for translation in translations:
+            print(translation.dumps())
+
+    Modulemd.dump(sorted(translations), "modulemd-translations.yaml")
 
 
 

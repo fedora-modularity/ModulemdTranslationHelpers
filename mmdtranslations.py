@@ -14,7 +14,9 @@
 import gi
 import koji
 
+from collections import defaultdict
 from babel.messages import Catalog
+from datetime import datetime
 
 gi.require_version('Modulemd', '1.0')
 from gi.repository import Modulemd
@@ -120,3 +122,77 @@ def get_module_catalog(session, builds):
                 catalog.add(profile.props.description, locations=locations)
 
     return catalog
+
+
+def get_modulemd_translations_from_catalog_dict(catalog_dict):
+    now = datetime.utcnow()
+    modified = int("%04d%02d%02d%02d%02d%02d" % (
+        now.date().year,
+        now.date().month,
+        now.date().day,
+        now.time().hour,
+        now.time().minute,
+        now.time().second
+    ))
+
+    # Translation entries keyed by name, stream and locale
+    entries = dict()
+
+    mmd_translations = dict()
+    for locale, catalog in catalog_dict.items():
+        for msg in catalog:
+            if not msg.locations or not msg.string:
+                # Skip any message that doesn't actually contain a message
+                continue
+
+            for location, _ in msg.locations:
+                split_location = location.split(';')
+                if len(split_location) < 3 or len(split_location) > 5:
+                    print("Invalid location clue in translation data: %s" % (
+                        location), file=sys.stderr)
+
+                module_name = split_location[0]
+                module_stream = split_location[1]
+
+                try:
+                    entry = entries[(module_name, module_stream, locale)]
+                except KeyError:
+                    entry = Modulemd.TranslationEntry.new(locale)
+
+                # Summary Translation
+                if split_location[2] == "summary":
+                    entry.set_summary(msg.string)
+
+                # Description Translation
+                elif split_location[2] == "description":
+                    entry.set_description(msg.string)
+
+                # Translation of profile descriptions
+                elif split_location[2] == "profile":
+                    entry.set_profile_description(split_location[3],
+                                                  msg.string)
+
+                entries[(module_name, module_stream, locale)] = entry
+
+    for (module_name, module_stream, locale), entry in entries.items():
+        # Validate that the translation entry has both summary and description
+        # which are mandatory.
+        if not entry.get_summary() or not entry.get_description():
+            continue
+
+        # Otherwise, add or update the translation for this module and stream
+        try:
+            mmdtranslation = mmd_translations[(module_name,
+                                               module_stream)]
+        except KeyError:
+            mmdtranslation = Modulemd.Translation.new_full(
+                module_name=module_name,
+                module_stream=module_stream,
+                mdversion=1,
+                modified=modified
+            )
+
+        mmdtranslation.add_entry(entry)
+        mmd_translations[(module_name, module_stream)] = mmdtranslation
+
+    return mmd_translations.values()
