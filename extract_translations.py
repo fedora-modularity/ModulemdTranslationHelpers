@@ -42,20 +42,12 @@ The Zanata project
 The project version.
 (Default: f29)
 """, metavar="[f28, f29, rawhide, ...]")
-@click.option("-f", "--zanata-translation-file",
-              default="fedora-modularity-translations",
-              type=str, help="""
-The name of the translated file in Zanata.
-(Default: fedora-modularity-translations)
-""")
-def main(branch, zanata_url, zanata_project,
-         zanata_project_version, zanata_translation_file):
+def main(branch, zanata_url, zanata_project, zanata_project_version):
     """
     Extract translations from all modules included in a particular version of
     Fedora or EPEL.
     """
     k = mmdtranslations.get_koji_session()
-    script_dir = os.path.dirname(os.path.realpath(__file__))
 
     if branch == "rawhide":
         branch = mmdtranslations.get_rawhide_version(k)

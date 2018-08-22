@@ -64,33 +64,6 @@ def get_latest_modules_in_tag(session, tag):
     return latest
 
 
-def get_streams_and_strings(session, builds):
-    translatable_strings = set()
-    module_streams = set()
-    for build_id in builds.keys():
-        build = session.getBuild(build_id)
-        print("Processing %s:%s" % (build['package_name'], build['nvr']))
-
-        module_streams.add("%s:%s" % (
-            build['extra']['typeinfo']['module']['name'],
-            build['extra']['typeinfo']['module']['stream']))
-
-        modulemds = Modulemd.objects_from_string(
-            build['extra']['typeinfo']['module']['modulemd_str'])
-
-        # We should only get a single modulemd document from Koji
-        assert len(modulemds) == 1
-
-        translatable_strings.add(modulemds[0].props.summary)
-        translatable_strings.add(modulemds[0].props.description)
-
-        # Get any profile descriptions
-        for profile_name, profile in modulemds[0].peek_profiles().items():
-            if profile.props.description:
-                translatable_strings.add(profile.props.description)
-    return module_streams, translatable_strings
-
-
 def get_module_catalog(session, builds):
     catalog = Catalog(project="fedora-modularity-translations")
 
