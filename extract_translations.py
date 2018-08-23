@@ -16,7 +16,7 @@ import os
 import sys
 import subprocess
 import click
-import mmdtranslations
+import mmdzanata
 from babel.messages import pofile
 
 
@@ -47,23 +47,23 @@ def main(branch, zanata_url, zanata_project, zanata_project_version):
     Extract translations from all modules included in a particular version of
     Fedora or EPEL.
     """
-    k = mmdtranslations.get_koji_session()
+    k = mmdzanata.get_koji_session()
 
     if branch == "rawhide":
-        branch = mmdtranslations.get_rawhide_version(k)
+        branch = mmdzanata.get_rawhide_version(k)
 
-    tags = mmdtranslations.get_tags_for_branch(branch)
+    tags = mmdzanata.get_tags_for_branch(branch)
 
     tagged_builds = []
     for tag in tags:
-        tagged_builds.extend(mmdtranslations.get_latest_modules_in_tag(k, tag))
+        tagged_builds.extend(mmdzanata.get_latest_modules_in_tag(k, tag))
 
     # Make the list unique since some modules may have multiple tags
     unique_builds = {}
     for build in tagged_builds:
         unique_builds[build['id']] = build
 
-    catalog = mmdtranslations.get_module_catalog(k, unique_builds)
+    catalog = mmdzanata.get_module_catalog(k, unique_builds)
 
     with open("fedora-modularity-translations.pot", mode="wb") as f:
         pofile.write_po(f, catalog, sort_by_file=True)

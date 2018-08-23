@@ -17,7 +17,7 @@ import gi
 import requests
 import sys
 
-import mmdtranslations
+import mmdzanata
 
 from babel.messages import pofile
 from io import BytesIO
@@ -110,7 +110,7 @@ def main(debug, zanata_rest_url, zanata_project,
             BytesIO(r.content),
             domain="fedora-modularity-translations")
 
-    translations = mmdtranslations.get_modulemd_translations_from_catalog_dict(
+    translations = mmdzanata.get_modulemd_translations_from_catalog_dict(
         catalogs)
 
     if debug:
