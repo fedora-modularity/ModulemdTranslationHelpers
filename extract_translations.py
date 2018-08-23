@@ -12,15 +12,55 @@
 # For more information on free software, see
 # <https://www.gnu.org/philosophy/free-sw.en.html>.
 
-import os
+import koji
 import sys
 import subprocess
 import click
 import mmdzanata
+import requests
+
 from babel.messages import pofile
 
 
+def get_fedora_rawhide_version(session, debug=False):
+    # Koji sometimes disconnects for no apparent reason. Retry up to 5
+    # times before failing.
+    for attempt in range(5):
+        try:
+            build_targets = session.getBuildTargets('rawhide')
+        except requests.exceptions.ConnectionError:
+            if debug:
+                print("Connection lost while retriving rawhide branch, "
+                      "retrying...",
+                      file=sys.stderr)
+        else:
+            # Succeeded this time, so break out of the loop
+            break
+
+    return build_targets[0][
+        'build_tag_name'].partition('-build')[0]
+
+
+def get_tags_for_fedora_branch(branch):
+    return ['%s-modular' % branch,
+            '%s-modular-override' % branch,
+            '%s-modular-pending' % branch,
+            '%s-modular-signing-pending' % branch,
+            '%s-modular-updates' % branch,
+            '%s-modular-updates-candidate' % branch,
+            '%s-modular-updates-pending' % branch,
+            '%s-modular-updates-testing' % branch,
+            '%s-modular-updates-testing-pending' % branch]
+
+
 @click.command()
+@click.option('-k', '--koji-url',
+              default='https://koji.fedoraproject.org/kojihub',
+              type=str, help="""
+The URL of the Koji build system.
+(Default: https://koji.fedoraproject.org/kojihub)
+""",
+              metavar="<URL>")
 @click.option('-b', '--branch', default="rawhide", type=str,
               help="The distribution release (Default: rawhide)",
               metavar="<branch_name>")
@@ -37,33 +77,24 @@ The Zanata project
 (Default: fedora-modularity-translations)
 """,
               metavar="<zanata_project>")
-@click.option("-v", "--zanata-project-version", default="f29",
+@click.option("-v", "--zanata-project-version", default="rawhide",
               type=str, help="""
 The project version.
-(Default: f29)
+(Default: rawhide)
 """, metavar="[f28, f29, rawhide, ...]")
-def main(branch, zanata_url, zanata_project, zanata_project_version):
+def main(branch, koji_url, zanata_url, zanata_project,
+         zanata_project_version):
     """
     Extract translations from all modules included in a particular version of
     Fedora or EPEL.
     """
-    k = mmdzanata.get_koji_session()
+    session = koji.ClientSession(koji_url)
 
     if branch == "rawhide":
-        branch = mmdzanata.get_rawhide_version(k)
+        branch = get_fedora_rawhide_version(session)
 
-    tags = mmdzanata.get_tags_for_branch(branch)
-
-    tagged_builds = []
-    for tag in tags:
-        tagged_builds.extend(mmdzanata.get_latest_modules_in_tag(k, tag))
-
-    # Make the list unique since some modules may have multiple tags
-    unique_builds = {}
-    for build in tagged_builds:
-        unique_builds[build['id']] = build
-
-    catalog = mmdzanata.get_module_catalog(k, unique_builds)
+    catalog = mmdzanata.get_module_catalog_from_tags(
+        session, get_tags_for_fedora_branch(branch), debug=True)
 
     with open("fedora-modularity-translations.pot", mode="wb") as f:
         pofile.write_po(f, catalog, sort_by_file=True)

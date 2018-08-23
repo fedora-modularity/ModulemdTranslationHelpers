@@ -10,11 +10,14 @@
 # For more information on the license, see COPYING.
 # For more information on free software, see
 # <https://www.gnu.org/philosophy/free-sw.en.html>.
+#
+# This module provides utility functions for interacting with Zanata
+# translations of Fedora-style modules.
 
+import sys
 import gi
-import koji
+import requests
 
-from collections import defaultdict
 from babel.messages import Catalog
 from datetime import datetime
 
@@ -22,28 +25,28 @@ gi.require_version('Modulemd', '1.0')
 from gi.repository import Modulemd
 
 
-def get_koji_session():
-    return koji.ClientSession('https://koji.fedoraproject.org/kojihub')
+def get_latest_modules_in_tag(session, tag, debug=False):
+    """
+    Get the most-recently built versions of each (module,stream) pair from
+    a Koji tag
+    :param session: A Koji session
+    :param tag: A koji tag
+    :return: A list of the most recent build of all modules in the tag.
+    """
 
-
-def get_rawhide_version(session):
-    return session.getBuildTargets('rawhide')[0]['build_tag_name'].partition('-build')[0]
-
-
-def get_tags_for_branch(branch):
-    return ['%s-modular' % branch,
-            '%s-modular-override' % branch,
-            '%s-modular-pending' % branch,
-            '%s-modular-signing-pending' % branch,
-            '%s-modular-updates' % branch,
-            '%s-modular-updates-candidate' % branch,
-            '%s-modular-updates-pending' % branch,
-            '%s-modular-updates-testing' % branch,
-            '%s-modular-updates-testing-pending' % branch]
-
-
-def get_latest_modules_in_tag(session, tag):
-    tagged = session.listTagged(tag, latest=False)
+    # Koji sometimes disconnects for no apparent reason. Retry up to 5
+    # times before failing.
+    for attempt in range(5):
+        try:
+            tagged = session.listTagged(tag, latest=False)
+        except requests.exceptions.ConnectionError:
+            if debug:
+                print("Connection lost while retrieving builds for tag %s, "
+                      "retrying..." % tag,
+                      file=sys.stderr)
+        else:
+            # Succeeded this time, so break out of the loop
+            break
 
     # Find the latest, in module terms.  Pungi does this.
     # Collect all contexts that share the same NSV.
@@ -66,22 +69,53 @@ def get_latest_modules_in_tag(session, tag):
     return latest
 
 
-def get_module_catalog(session, builds):
+def get_module_catalog_from_tags(session, tags, debug=False):
+    """
+    Construct a Babel translation source catalog from the contents of the
+    provided tags.
+    :param session: A Koji session
+    :param tags: A set of Koji tags from which module metadata should be pulled
+    :param debug: Whether to print debugging information to the console
+    :return: A babel.messages.Catalog containing extracted translatable strings
+    from any modules in the provided tags. Raises an exception if any of the
+    retrieved modulemd is invalid.
+    """
+
     catalog = Catalog(project="fedora-modularity-translations")
 
-    for build_id in builds.keys():
-        build = session.getBuild(build_id)
-        print("Processing %s:%s" % (build['package_name'], build['nvr']))
+    tagged_builds = []
+    for tag in tags:
+        tagged_builds.extend(get_latest_modules_in_tag(session, tag, debug))
 
-        module_stream = "%s:%s" % (
-            build['extra']['typeinfo']['module']['name'],
-            build['extra']['typeinfo']['module']['stream'])
+    # Make the list unique since some modules may have multiple tags
+    unique_builds = {}
+    for build in tagged_builds:
+        unique_builds[build['id']] = build
+
+    for build_id in unique_builds.keys():
+        # Koji sometimes disconnects for no apparent reason. Retry up to 5
+        # times before failing.
+        for attempt in range(5):
+            try:
+                build = session.getBuild(build_id)
+            except requests.exceptions.ConnectionError:
+                if debug:
+                    print("Connection lost while processing buildId %s, "
+                          "retrying..." % build_id,
+                          file=sys.stderr)
+            else:
+                # Succeeded this time, so break out of the loop
+                break
+        if debug:
+            print("Processing %s:%s" % (build['package_name'], build['nvr']))
 
         modulemds = Modulemd.objects_from_string(
             build['extra']['typeinfo']['module']['modulemd_str'])
 
         # We should only get a single modulemd document from Koji
-        assert len(modulemds) == 1
+        if len(modulemds) != 1:
+            raise ValueError("Koji build %s returned multiple modulemd YAML "
+                             "documents." % build['nvr'])
 
         mmd = modulemds[0]
 
