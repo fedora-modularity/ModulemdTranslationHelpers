@@ -18,7 +18,6 @@ import subprocess
 import click
 import mmdzanata
 import requests
-
 from babel.messages import pofile
 
 
@@ -53,7 +52,12 @@ def get_tags_for_fedora_branch(branch):
             '%s-modular-updates-testing-pending' % branch]
 
 
-@click.command()
+##############################################################################
+# Common options for all commands                                            #
+##############################################################################
+
+@click.group()
+@click.option('--debug/--no-debug', default=False)
 @click.option('-k', '--koji-url',
               default='https://koji.fedoraproject.org/kojihub',
               type=str, help="""
@@ -71,7 +75,8 @@ The Zanata URL
 (Default: https://fedora.zanata.org/)
 """,
               metavar="<zanata_project>")
-@click.option('-p', '--zanata-project', default="fedora-modularity-translations",
+@click.option('-p', '--zanata-project',
+              default="fedora-modularity-translations",
               type=str, help="""
 The Zanata project
 (Default: fedora-modularity-translations)
@@ -82,37 +87,70 @@ The Zanata project
 The project version.
 (Default: rawhide)
 """, metavar="[f28, f29, rawhide, ...]")
-def main(branch, koji_url, zanata_url, zanata_project,
-         zanata_project_version):
+@click.pass_context
+def cli(ctx, debug, branch, koji_url, zanata_url, zanata_project,
+        zanata_project_version):
+
+    ctx.obj = dict()
+    ctx.obj['debug'] = debug
+
+    ctx.obj['session'] = koji.ClientSession(koji_url)
+
+    if branch == "rawhide":
+        ctx.obj['branch'] = get_fedora_rawhide_version(ctx.obj['session'])
+
+    ctx.obj['zanata_url'] = zanata_url
+    ctx.obj['zanata_project'] = zanata_project
+    ctx.obj['zanata_project_version'] = zanata_project_version
+
+
+##############################################################################
+# Subcommands                                                                #
+##############################################################################
+
+@cli.command()
+@click.option('--upload/--no-upload', default=True,
+               help='Whether to automatically push extracted strings to '
+                    'Zanata')
+@click.option('-p', '--potfile', default="fedora-modularity-translations.pot",
+              help="The name of the gettext POT file to contain the "
+                   "extracted strings. (Default: "
+                   "fedora-modularity-translations.pot)",
+              type=click.Path())
+@click.pass_context
+def extract(ctx, upload, potfile):
     """
     Extract translations from all modules included in a particular version of
     Fedora or EPEL.
     """
-    session = koji.ClientSession(koji_url)
-
-    if branch == "rawhide":
-        branch = get_fedora_rawhide_version(session)
 
     catalog = mmdzanata.get_module_catalog_from_tags(
-        session, get_tags_for_fedora_branch(branch), debug=True)
+        ctx.parent.obj['session'], get_tags_for_fedora_branch(
+            ctx.parent.obj['branch']),
+        debug=ctx.parent.obj['debug'])
 
-    with open("fedora-modularity-translations.pot", mode="wb") as f:
+    with open(potfile, mode="wb") as f:
         pofile.write_po(f, catalog, sort_by_file=True)
 
-    # Use the zanata-cli to upload the pot file
-    # It would be better to use the REST API directly here, but the XML payload
-    # format is not documented.
-    zanata_args = ['/usr/bin/zanata-cli', '-B', 'push',
-                   '--url', zanata_url,
-                   '--project', zanata_project,
-                   '--project-type', 'gettext',
-                   '--project-version', zanata_project_version]
-    result = subprocess.run(zanata_args, capture_output=True)
-    if result.returncode:
-        print(result.stderr)
-        print(result.stdout)
-        sys.exit(1)
+    print ("Wrote extracted strings to %s" % potfile)
+
+    # Optionally upload the extracted strings directly to Zanata
+    if upload:
+        # Use the zanata-cli to upload the pot file
+        # It would be better to use the REST API directly here, but the XML
+        # payload format is not documented.
+        zanata_args = ['/usr/bin/zanata-cli', '-B', 'push',
+                       '--url', ctx.parent.obj['zanata_url'],
+                       '--project', ctx.parent.obj['zanata_project'],
+                       '--project-type', 'gettext',
+                       '--project-version', ctx.parent.obj[
+                           'zanata_project_version']]
+        result = subprocess.run(zanata_args, capture_output=True)
+        if result.returncode:
+            print(result.stderr)
+            print(result.stdout)
+            sys.exit(1)
 
 
 if __name__ == "__main__":
-    main()
+    cli(obj={})
