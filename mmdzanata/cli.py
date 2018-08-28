@@ -174,11 +174,13 @@ def generate_metadata(ctx):
         ctx.parent.obj['debug']
     )
 
-    Modulemd.dump(sorted(translations), "%s.yaml" % (
-        ctx.parent.obj['zanata_translation_document']))
+    translation_file = "%s-%s.yaml" % (
+        ctx.parent.obj['zanata_translation_document'],
+        ctx.parent.obj['branch'])
 
-    print("Wrote modulemd-translations YAML to %s.yaml" % (
-        ctx.parent.obj['zanata_translation_document']))
+    Modulemd.dump(sorted(translations), translation_file)
+
+    print("Wrote modulemd-translations YAML to %s" % translation_file)
 
 
 if __name__ == "__main__":
