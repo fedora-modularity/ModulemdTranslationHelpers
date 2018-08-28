@@ -85,7 +85,7 @@ def cli(ctx, debug, branch, koji_url, zanata_url, zanata_project,
 
 
 @cli.command()
-@click.option('--upload/--no-upload', default=True,
+@click.option('--upload/--no-upload', default=False,
               help='Whether to automatically push extracted strings to '
               'Zanata',
               show_default=True)
