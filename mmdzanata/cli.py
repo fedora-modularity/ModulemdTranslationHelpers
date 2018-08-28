@@ -17,6 +17,7 @@ import gi
 import koji
 import mmdzanata
 import mmdzanata.fedora
+import os
 import subprocess
 import sys
 import shutil
@@ -58,9 +59,14 @@ from gi.repository import Modulemd
               help="The name of the translated file in Zanata.",
               show_default=True,
               metavar="<translation_document>")
+@click.option('-c', '--zanata-user-config',
+              default=lambda: "%s/.config/zanata.ini" % (
+                      os.environ.get("HOME", '~')),
+              help="Path to the Zanata User Config INI file",
+              type=click.Path(exists=True))
 @click.pass_context
 def cli(ctx, debug, branch, koji_url, zanata_url, zanata_project,
-        zanata_translation_document):
+        zanata_translation_document, zanata_user_config):
 
     ctx.obj = dict()
     ctx.obj['debug'] = debug
@@ -76,6 +82,7 @@ def cli(ctx, debug, branch, koji_url, zanata_url, zanata_project,
     ctx.obj['zanata_url'] = zanata_url
     ctx.obj['zanata_project'] = zanata_project
     ctx.obj['zanata_translation_document'] = zanata_translation_document
+    ctx.obj['zanata_user_config'] = zanata_user_config
 
 ##############################################################################
 # Subcommands                                                                #
@@ -121,7 +128,9 @@ def extract(ctx, upload):
                 '/usr/bin/zanata-cli', '-B', '-e', 'put-version',
                 '--url', ctx.parent.obj['zanata_url'],
                 '--version-project', ctx.parent.obj['zanata_project'],
-                '--version-slug', ctx.parent.obj['branch']]
+                '--version-slug', ctx.parent.obj['branch'],
+                '--user-config', ctx.parent.obj['zanata_user_config']
+            ]
             result = subprocess.run(zanata_args, capture_output=True)
             if result.returncode or ctx.parent.obj['debug']:
                 print(result.stderr.decode('utf-8'))
@@ -130,12 +139,15 @@ def extract(ctx, upload):
                 sys.exit(1)
 
             # Update the translatable strings for this branch
-            zanata_args = ['/usr/bin/zanata-cli', '-B', '-e', 'push',
-                           '--url', ctx.parent.obj['zanata_url'],
-                           '--project', ctx.parent.obj['zanata_project'],
-                           '--project-type', 'gettext',
-                           '--project-version', ctx.parent.obj['branch'],
-                           '--src-dir', tdir]
+            zanata_args = [
+                '/usr/bin/zanata-cli', '-B', '-e', 'push',
+                '--url', ctx.parent.obj['zanata_url'],
+                '--project', ctx.parent.obj['zanata_project'],
+                '--project-type', 'gettext',
+                '--project-version', ctx.parent.obj['branch'],
+                '--src-dir', tdir,
+                '--user-config', ctx.parent.obj['zanata_user_config']
+            ]
             result = subprocess.run(zanata_args, capture_output=True)
             if result.returncode or ctx.parent.obj['debug']:
                 print(result.stderr.decode('utf-8'))
