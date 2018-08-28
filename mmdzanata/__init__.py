@@ -18,11 +18,44 @@ import sys
 import gi
 import requests
 
-from babel.messages import Catalog
+from babel.messages import Catalog, pofile
 from datetime import datetime
+from io import BytesIO
 
 gi.require_version('Modulemd', '1.0')
 from gi.repository import Modulemd
+
+
+##############################################################################
+# Exceptions                                                                 #
+##############################################################################
+
+
+class MmdZanataError(Exception):
+    pass
+
+
+class NonexistentProjectError(MmdZanataError):
+    def __init__(self, project, version):
+        """
+        Exception thrown when the user has requested a Zanata project that
+        does not exist
+        :param project: The nonexistent project name
+        :param version: The version of the project in Zanata
+        """
+        self.project = project
+        self.version = version
+        self.message = "The project %s does not exist in Zanata" % project
+
+class UnexpectedHTTPResponse(MmdZanataError):
+    def __init__(self, status_code, body):
+        """
+        Exception thrown when an unexpected response is received from an HTTP
+        request.
+        :param body: The response body
+        """
+        self.status_code = status_code
+        self.body = body
 
 
 def get_latest_modules_in_tag(session, tag, debug=False):
@@ -158,6 +191,36 @@ def get_module_catalog_from_tags(session, tags, debug=False):
     return catalog
 
 
+def get_translated_locales(zanata_rest_url, zanata_project,
+                           zanata_project_version,
+                           debug=False):
+    # Get the statistics on the translation project for this version
+    stats_url = zanata_rest_url + "/stats/proj/%s/iter/%s" % (
+        zanata_project, zanata_project_version)
+
+    r = requests.get(stats_url, headers={"Accept": "application/json"})
+    if r.status_code == 404:
+        print("Project '%s:%s' does not exist." % (
+            zanata_project, zanata_project_version),
+              file=sys.stderr)
+        raise NonexistentProjectError(zanata_project, zanata_project_version)
+    elif r.status_code != 200:
+        raise UnexpectedHTTPResponse(r.status_code, r.content)
+
+    # We will pull down information for any locale that is at least partially
+    # translated
+    translated_locales = [t["locale"]
+                          for t in r.json()['stats']
+                          if t["translated"] > 0]
+
+    if debug:
+        print("Available locales: ")
+        for locale in translated_locales:
+            print("* %s" % locale)
+
+    return translated_locales
+
+
 def get_modulemd_translations_from_catalog_dict(catalog_dict):
     now = datetime.utcnow()
     modified = int("%04d%02d%02d%02d%02d%02d" % (
@@ -230,3 +293,41 @@ def get_modulemd_translations_from_catalog_dict(catalog_dict):
         mmd_translations[(module_name, module_stream)] = mmdtranslation
 
     return mmd_translations.values()
+
+def get_modulemd_translations(zanata_rest_url, zanata_project,
+                              os_branch, zanata_translation_file,
+                              debug=False):
+    translated_locales = get_translated_locales(zanata_rest_url,
+                                                zanata_project,
+                                                os_branch,
+                                                debug)
+
+    catalogs = dict()
+    for loc in translated_locales:
+        # Get the translation data for this locale
+        pofile_url = zanata_rest_url + \
+                     "/file/translation/%s/%s/%s/po?docId=%s" % (
+                         zanata_project, os_branch, loc,
+                         zanata_translation_file)
+        r = requests.get(pofile_url,
+                         headers={"Accept": "application/octet-stream"})
+        if r.status_code != 200:
+            print("Could not retrieve translations for %s" % loc,
+                  file=sys.stderr)
+            continue
+
+        if debug:
+            print("PO content for locale '%s'" % loc)
+            print(r.text)
+
+        # Read the po file into a catalog, indexed by the locale
+        catalogs[loc] = pofile.read_po(
+            BytesIO(r.content),
+            domain="fedora-modularity-translations")
+
+    translations = get_modulemd_translations_from_catalog_dict(catalogs)
+    if debug:
+        for translation in translations:
+            print(translation.dumps())
+
+    return translations

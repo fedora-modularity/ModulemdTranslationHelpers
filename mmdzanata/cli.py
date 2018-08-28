@@ -12,14 +12,18 @@
 # For more information on free software, see
 # <https://www.gnu.org/philosophy/free-sw.en.html>.
 
-import koji
-import sys
-import subprocess
 import click
+import gi
+import koji
 import mmdzanata
 import requests
+import subprocess
+import sys
+
 from babel.messages import pofile
 
+gi.require_version('Modulemd', '1.0')
+from gi.repository import Modulemd
 
 def get_fedora_rawhide_version(session, debug=False):
     # Koji sometimes disconnects for no apparent reason. Retry up to 5
@@ -56,6 +60,7 @@ def get_tags_for_fedora_branch(branch):
 # Common options for all commands                                            #
 ##############################################################################
 
+
 @click.group()
 @click.option('--debug/--no-debug', default=False)
 @click.option('-k', '--koji-url',
@@ -82,43 +87,45 @@ The Zanata project
 (Default: fedora-modularity-translations)
 """,
               metavar="<zanata_project>")
-@click.option("-v", "--zanata-project-version", default="rawhide",
-              type=str, help="""
-The project version.
-(Default: rawhide)
-""", metavar="[f28, f29, rawhide, ...]")
+@click.option('-f', '--zanata-translation-document',
+              default="fedora-modularity-translations",
+              help="""
+The name of the translated file in Zanata.
+(Default: fedora-modularity-translations)
+""",
+              metavar="<translation_document>")
 @click.pass_context
 def cli(ctx, debug, branch, koji_url, zanata_url, zanata_project,
-        zanata_project_version):
+        zanata_translation_document):
 
     ctx.obj = dict()
     ctx.obj['debug'] = debug
 
     ctx.obj['session'] = koji.ClientSession(koji_url)
 
+    ctx.obj['branch'] = branch
+
     if branch == "rawhide":
         ctx.obj['branch'] = get_fedora_rawhide_version(ctx.obj['session'])
 
     ctx.obj['zanata_url'] = zanata_url
     ctx.obj['zanata_project'] = zanata_project
-    ctx.obj['zanata_project_version'] = zanata_project_version
-
+    ctx.obj['zanata_translation_document'] = zanata_translation_document
 
 ##############################################################################
 # Subcommands                                                                #
+##############################################################################
+
+##############################################################################
+# `mmdzanata extract`                                                        #
 ##############################################################################
 
 @cli.command()
 @click.option('--upload/--no-upload', default=True,
                help='Whether to automatically push extracted strings to '
                     'Zanata')
-@click.option('-p', '--potfile', default="fedora-modularity-translations.pot",
-              help="The name of the gettext POT file to contain the "
-                   "extracted strings. (Default: "
-                   "fedora-modularity-translations.pot)",
-              type=click.Path())
 @click.pass_context
-def extract(ctx, upload, potfile):
+def extract(ctx, upload):
     """
     Extract translations from all modules included in a particular version of
     Fedora or EPEL.
@@ -129,27 +136,58 @@ def extract(ctx, upload, potfile):
             ctx.parent.obj['branch']),
         debug=ctx.parent.obj['debug'])
 
+    potfile = "%s.pot" % ctx.parent.obj['zanata_translation_document']
+
     with open(potfile, mode="wb") as f:
         pofile.write_po(f, catalog, sort_by_file=True)
 
-    print ("Wrote extracted strings to %s" % potfile)
+    print ("Wrote extracted strings for %s to %s" % (ctx.obj['branch'],
+                                                     potfile))
 
     # Optionally upload the extracted strings directly to Zanata
     if upload:
         # Use the zanata-cli to upload the pot file
         # It would be better to use the REST API directly here, but the XML
         # payload format is not documented.
-        zanata_args = ['/usr/bin/zanata-cli', '-B', 'push',
+        zanata_args = ['/usr/bin/zanata-cli', '-B', '-e', 'push',
                        '--url', ctx.parent.obj['zanata_url'],
                        '--project', ctx.parent.obj['zanata_project'],
                        '--project-type', 'gettext',
-                       '--project-version', ctx.parent.obj[
-                           'zanata_project_version']]
+                       '--project-version', ctx.parent.obj['branch']]
         result = subprocess.run(zanata_args, capture_output=True)
         if result.returncode:
             print(result.stderr)
             print(result.stdout)
             sys.exit(1)
+
+
+##############################################################################
+# `mmdzanata generate_metadata`                                              #
+##############################################################################
+
+@cli.command()
+@click.pass_context
+def generate_metadata(ctx):
+    """
+    :return: 0 on successful creation of modulemd-translation,
+    nonzero on failure.
+    """
+
+    zanata_rest_url = "%s/rest" % ctx.parent.obj['zanata_url']
+
+    translations = mmdzanata.get_modulemd_translations(
+        zanata_rest_url,
+        ctx.parent.obj['zanata_project'],
+        ctx.parent.obj['branch'],
+        ctx.parent.obj['zanata_translation_document'],
+        ctx.parent.obj['debug']
+    )
+
+    Modulemd.dump(sorted(translations), "%s.yaml" % (
+        ctx.parent.obj['zanata_translation_document']))
+
+    print("Wrote modulemd-translations YAML to %s.yaml" % (
+        ctx.parent.obj['zanata_translation_document']))
 
 
 if __name__ == "__main__":
