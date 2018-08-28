@@ -327,7 +327,7 @@ def get_modulemd_translations(zanata_rest_url, zanata_project,
         # Read the po file into a catalog, indexed by the locale
         catalogs[loc] = pofile.read_po(
             BytesIO(r.content),
-            domain="fedora-modularity-translations")
+            domain=zanata_translation_file)
 
     translations = get_modulemd_translations_from_catalog_dict(catalogs)
     if debug:
