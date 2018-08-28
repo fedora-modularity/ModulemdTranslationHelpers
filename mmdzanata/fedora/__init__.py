@@ -13,6 +13,11 @@
 
 import requests
 
+KOJI_URL = 'https://koji.fedoraproject.org/kojihub'
+ZANATA_URL = "https://fedora.zanata.org"
+ZANATA_PROJECT = "fedora-modularity-translations"
+ZANATA_DOCUMENT = "fedora-modularity-translations"
+
 
 def get_fedora_rawhide_version(session, debug=False):
     # Koji sometimes disconnects for no apparent reason. Retry up to 5

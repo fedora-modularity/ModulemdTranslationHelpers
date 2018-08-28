@@ -34,35 +34,27 @@ from gi.repository import Modulemd
 @click.group()
 @click.option('--debug/--no-debug', default=False)
 @click.option('-k', '--koji-url',
-              default='https://koji.fedoraproject.org/kojihub',
-              type=str, help="""
-The URL of the Koji build system.
-(Default: https://koji.fedoraproject.org/kojihub)
-""",
+              default=mmdzanata.fedora.KOJI_URL,
+              type=str, help="The URL of the Koji build system.",
+              show_default=True,
               metavar="<URL>")
 @click.option('-b', '--branch', default="rawhide", type=str,
-              help="The distribution release (Default: rawhide)",
+              help="The distribution release",
               metavar="<branch_name>")
 @click.option('-z', '--zanata-url',
-              default="https://fedora.zanata.org",
-              type=str, help="""
-The Zanata URL
-(Default: https://fedora.zanata.org/)
-""",
+              default=mmdzanata.fedora.ZANATA_URL,
+              type=str, help="The Zanata URL",
+              show_default=True,
               metavar="<zanata_project>")
 @click.option('-p', '--zanata-project',
-              default="fedora-modularity-translations",
-              type=str, help="""
-The Zanata project
-(Default: fedora-modularity-translations)
-""",
+              default=mmdzanata.fedora.ZANATA_PROJECT,
+              type=str, help="The Zanata project",
+              show_default=True,
               metavar="<zanata_project>")
 @click.option('-f', '--zanata-translation-document',
-              default="fedora-modularity-translations",
-              help="""
-The name of the translated file in Zanata.
-(Default: fedora-modularity-translations)
-""",
+              default=mmdzanata.fedora.ZANATA_DOCUMENT,
+              help="The name of the translated file in Zanata.",
+              show_default=True,
               metavar="<translation_document>")
 @click.pass_context
 def cli(ctx, debug, branch, koji_url, zanata_url, zanata_project,
@@ -95,7 +87,8 @@ def cli(ctx, debug, branch, koji_url, zanata_url, zanata_project,
 @cli.command()
 @click.option('--upload/--no-upload', default=True,
               help='Whether to automatically push extracted strings to '
-              'Zanata')
+              'Zanata',
+              show_default=True)
 @click.pass_context
 def extract(ctx, upload):
     """
