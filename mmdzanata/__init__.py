@@ -36,6 +36,7 @@ class MmdZanataError(Exception):
 
 
 class NonexistentProjectError(MmdZanataError):
+
     def __init__(self, project, version):
         """
         Exception thrown when the user has requested a Zanata project that
@@ -47,7 +48,9 @@ class NonexistentProjectError(MmdZanataError):
         self.version = version
         self.message = "The project %s does not exist in Zanata" % project
 
+
 class UnexpectedHTTPResponse(MmdZanataError):
+
     def __init__(self, status_code, body):
         """
         Exception thrown when an unexpected response is received from an HTTP
@@ -159,7 +162,7 @@ def get_module_catalog_from_tags(session, tags, debug=False):
         else:
             locations = []
         locations.append(("%s;%s;summary" % (
-                mmd.props.name,mmd.props.stream), 1))
+            mmd.props.name, mmd.props.stream), 1))
         catalog.add(mmd.props.summary, locations=locations)
 
         # Process the description
@@ -185,7 +188,7 @@ def get_module_catalog_from_tags(session, tags, debug=False):
                     mmd.props.name,
                     mmd.props.stream,
                     profile.props.name),
-                                       3))
+                    3))
                 catalog.add(profile.props.description, locations=locations)
 
     return catalog
@@ -202,7 +205,7 @@ def get_translated_locales(zanata_rest_url, zanata_project,
     if r.status_code == 404:
         print("Project '%s:%s' does not exist." % (
             zanata_project, zanata_project_version),
-              file=sys.stderr)
+            file=sys.stderr)
         raise NonexistentProjectError(zanata_project, zanata_project_version)
     elif r.status_code != 200:
         raise UnexpectedHTTPResponse(r.status_code, r.content)
@@ -294,6 +297,7 @@ def get_modulemd_translations_from_catalog_dict(catalog_dict):
 
     return mmd_translations.values()
 
+
 def get_modulemd_translations(zanata_rest_url, zanata_project,
                               os_branch, zanata_translation_file,
                               debug=False):
@@ -306,9 +310,9 @@ def get_modulemd_translations(zanata_rest_url, zanata_project,
     for loc in translated_locales:
         # Get the translation data for this locale
         pofile_url = zanata_rest_url + \
-                     "/file/translation/%s/%s/%s/po?docId=%s" % (
-                         zanata_project, os_branch, loc,
-                         zanata_translation_file)
+            "/file/translation/%s/%s/%s/po?docId=%s" % (
+                zanata_project, os_branch, loc,
+                zanata_translation_file)
         r = requests.get(pofile_url,
                          headers={"Accept": "application/octet-stream"})
         if r.status_code != 200:

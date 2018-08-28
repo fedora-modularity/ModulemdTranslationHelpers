@@ -91,10 +91,11 @@ def cli(ctx, debug, branch, koji_url, zanata_url, zanata_project,
 # `mmdzanata extract`                                                        #
 ##############################################################################
 
+
 @cli.command()
 @click.option('--upload/--no-upload', default=True,
-               help='Whether to automatically push extracted strings to '
-                    'Zanata')
+              help='Whether to automatically push extracted strings to '
+              'Zanata')
 @click.pass_context
 def extract(ctx, upload):
     """
@@ -112,8 +113,8 @@ def extract(ctx, upload):
     with open(potfile, mode="wb") as f:
         pofile.write_po(f, catalog, sort_by_file=True)
 
-    print ("Wrote extracted strings for %s to %s" % (ctx.obj['branch'],
-                                                     potfile))
+    print("Wrote extracted strings for %s to %s" % (ctx.obj['branch'],
+                                                    potfile))
 
     # Optionally upload the extracted strings directly to Zanata
     if upload:
