@@ -16,7 +16,7 @@ import click
 import gi
 import koji
 import mmdzanata
-import requests
+import mmdzanata.fedora
 import subprocess
 import sys
 
@@ -24,36 +24,6 @@ from babel.messages import pofile
 
 gi.require_version('Modulemd', '1.0')
 from gi.repository import Modulemd
-
-def get_fedora_rawhide_version(session, debug=False):
-    # Koji sometimes disconnects for no apparent reason. Retry up to 5
-    # times before failing.
-    for attempt in range(5):
-        try:
-            build_targets = session.getBuildTargets('rawhide')
-        except requests.exceptions.ConnectionError:
-            if debug:
-                print("Connection lost while retriving rawhide branch, "
-                      "retrying...",
-                      file=sys.stderr)
-        else:
-            # Succeeded this time, so break out of the loop
-            break
-
-    return build_targets[0][
-        'build_tag_name'].partition('-build')[0]
-
-
-def get_tags_for_fedora_branch(branch):
-    return ['%s-modular' % branch,
-            '%s-modular-override' % branch,
-            '%s-modular-pending' % branch,
-            '%s-modular-signing-pending' % branch,
-            '%s-modular-updates' % branch,
-            '%s-modular-updates-candidate' % branch,
-            '%s-modular-updates-pending' % branch,
-            '%s-modular-updates-testing' % branch,
-            '%s-modular-updates-testing-pending' % branch]
 
 
 ##############################################################################
@@ -106,7 +76,8 @@ def cli(ctx, debug, branch, koji_url, zanata_url, zanata_project,
     ctx.obj['branch'] = branch
 
     if branch == "rawhide":
-        ctx.obj['branch'] = get_fedora_rawhide_version(ctx.obj['session'])
+        ctx.obj['branch'] = mmdzanata.fedora.get_fedora_rawhide_version(
+            ctx.obj['session'])
 
     ctx.obj['zanata_url'] = zanata_url
     ctx.obj['zanata_project'] = zanata_project
@@ -132,7 +103,7 @@ def extract(ctx, upload):
     """
 
     catalog = mmdzanata.get_module_catalog_from_tags(
-        ctx.parent.obj['session'], get_tags_for_fedora_branch(
+        ctx.parent.obj['session'], mmdzanata.fedora.get_tags_for_fedora_branch(
             ctx.parent.obj['branch']),
         debug=ctx.parent.obj['debug'])
 

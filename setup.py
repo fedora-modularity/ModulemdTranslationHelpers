@@ -17,7 +17,7 @@ from setuptools import setup
 setup(
     name='mmdzanata',
     version='0.1',
-    packages=['mmdzanata'],
+    packages=['mmdzanata', 'mmdzanata.fedora'],
     url='',
     license='MIT',
     author='Stephen Gallagher',
