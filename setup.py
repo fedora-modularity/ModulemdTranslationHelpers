@@ -14,15 +14,19 @@
 
 from setuptools import setup
 
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
 setup(
     name='mmdzanata',
-    version='0.1',
+    version='0.2',
     packages=['mmdzanata', 'mmdzanata.fedora'],
-    url='',
+    url='https://github.com/sgallagher/modulemd-zanata',
     license='MIT',
     author='Stephen Gallagher',
     author_email='sgallagh@redhat.com',
     description='Tools for working with translations of modulemd',
+    long_description=long_description,
     # mmdzanata also requires koji, libmodulemd and zanata-client which are not
     # available on PyPI and must be installed separately. On Fedora, this is
     # done with `dnf install koji libmodulemd zanata-client`
@@ -34,4 +38,9 @@ setup(
     entry_points={
         'console_scripts': ['mmdzanata=mmdzanata.cli:cli'],
     },
+    classifiers=(
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: POSIX :: Linux",
+    ),
 )
