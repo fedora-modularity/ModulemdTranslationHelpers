@@ -17,6 +17,7 @@ import gi
 import koji
 import mmdzanata
 import mmdzanata.fedora
+import os
 import subprocess
 import sys
 
@@ -101,7 +102,15 @@ def extract(ctx, upload):
             ctx.parent.obj['branch']),
         debug=ctx.parent.obj['debug'])
 
-    potfile = "%s.pot" % ctx.parent.obj['zanata_translation_document']
+    try:
+        os.mkdir(ctx.parent.obj['branch'], mode=0o0770)
+    except OSError:
+        # Directory already exists
+        pass
+
+    potfile = "%s/%s.pot" % (
+        ctx.parent.obj['branch'],
+        ctx.parent.obj['zanata_translation_document'])
 
     with open(potfile, mode="wb") as f:
         pofile.write_po(f, catalog, sort_by_file=True)
@@ -132,7 +141,7 @@ def extract(ctx, upload):
                        '--project', ctx.parent.obj['zanata_project'],
                        '--project-type', 'gettext',
                        '--project-version', ctx.parent.obj['branch'],
-                       '--src-dir', '.']
+                       '--src-dir', ctx.parent.obj['branch']]
         result = subprocess.run(zanata_args, capture_output=True)
         if result.returncode:
             print(result.stderr.decode('utf-8'))
@@ -140,7 +149,7 @@ def extract(ctx, upload):
             sys.exit(2)
 
         print("Uploaded translatable strings for %s to Zanata" % (
-            ctx.obj['branch']))
+            ctx.parent.obj['branch']))
 
 
 ##############################################################################
