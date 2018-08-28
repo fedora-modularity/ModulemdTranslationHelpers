@@ -23,9 +23,11 @@ setup(
     author='Stephen Gallagher',
     author_email='sgallagh@redhat.com',
     description='Tools for working with translations of modulemd',
+    # mmdzanata also requires koji, libmodulemd and zanata-client which are not
+    # available on PyPI and must be installed separately. On Fedora, this is
+    # done with `dnf install koji libmodulemd zanata-client`
     install_requires=[
         'click',
-        'koji',
         'requests',
         'babel',
     ],
