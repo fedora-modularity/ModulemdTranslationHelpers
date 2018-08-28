@@ -117,10 +117,11 @@ def extract(ctx, upload):
             # payload format is not documented.
 
             # First ensure that the requested branch exists in Zanata
-            zanata_args = ['/usr/bin/zanata-cli', '-B', '-e', 'put-version',
-                           '--url', ctx.parent.obj['zanata_url'],
-                           '--version-project', ctx.parent.obj['zanata_project'],
-                           '--version-slug', ctx.parent.obj['branch']]
+            zanata_args = [
+                '/usr/bin/zanata-cli', '-B', '-e', 'put-version',
+                '--url', ctx.parent.obj['zanata_url'],
+                '--version-project', ctx.parent.obj['zanata_project'],
+                '--version-slug', ctx.parent.obj['branch']]
             result = subprocess.run(zanata_args, capture_output=True)
             if result.returncode or ctx.parent.obj['debug']:
                 print(result.stderr.decode('utf-8'))
