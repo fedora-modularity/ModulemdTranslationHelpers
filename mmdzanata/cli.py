@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 # This file is part of modulemd-zanata
 # Copyright (C) 2018 Stephen Gallagher
