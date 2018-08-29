@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 # This file is part of modulemd-zanata
-# Copyright (C) 2017-2018 Stephen Gallagher
+# Copyright (C) 2018 Stephen Gallagher
 #
 # Fedora-License-Identifier: MIT
 # SPDX-2.0-License-Identifier: MIT
