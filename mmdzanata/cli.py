@@ -66,6 +66,7 @@ from gi.repository import Modulemd
 @click.pass_context
 def cli(ctx, debug, branch, koji_url, zanata_url, zanata_project,
         zanata_translation_document, zanata_user_config):
+    """Tools for managing modularity translations."""
 
     ctx.obj = dict()
     ctx.obj['debug'] = debug
@@ -100,6 +101,8 @@ def cli(ctx, debug, branch, koji_url, zanata_url, zanata_project,
 @click.pass_context
 def extract(ctx, upload):
     """
+    Extract translatable strings from modules.
+
     Extract translations from all modules included in a particular version of
     Fedora or EPEL.
     """
@@ -172,6 +175,8 @@ def extract(ctx, upload):
 @click.pass_context
 def generate_metadata(ctx):
     """
+    Generate modulemd-translations YAML.
+
     :return: 0 on successful creation of modulemd-translation,
     nonzero on failure.
     """
