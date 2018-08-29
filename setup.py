@@ -19,7 +19,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='mmdzanata',
-    version='0.5',
+    version='0.6',
     packages=['mmdzanata', 'mmdzanata.fedora'],
     url='https://github.com/sgallagher/modulemd-zanata',
     license='MIT',
