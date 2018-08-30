@@ -11,6 +11,8 @@
 # For more information on free software, see
 # <https://www.gnu.org/philosophy/free-sw.en.html>.
 
+from __future__ import print_function
+
 import requests
 
 KOJI_URL = 'https://koji.fedoraproject.org/kojihub'

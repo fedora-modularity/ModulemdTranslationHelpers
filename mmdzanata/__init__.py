@@ -14,6 +14,8 @@
 # This module provides utility functions for interacting with Zanata
 # translations of Fedora-style modules.
 
+from __future__ import print_function
+
 import sys
 import gi
 import requests

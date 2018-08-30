@@ -11,6 +11,8 @@
 # For more information on free software, see
 # <https://www.gnu.org/philosophy/free-sw.en.html>.
 
+from __future__ import print_function
+
 import click
 import gi
 import koji
@@ -20,9 +22,9 @@ import os
 import subprocess
 import sys
 import shutil
+import tempfile
 
 from babel.messages import pofile
-from tempfile import TemporaryDirectory
 
 gi.require_version('Modulemd', '1.0')
 from gi.repository import Modulemd
@@ -112,59 +114,63 @@ def extract(ctx, upload):
             ctx.parent.obj['branch']),
         debug=ctx.parent.obj['debug'])
 
-    with TemporaryDirectory() as tdir:
-        po_basename = "%s.pot" % ctx.parent.obj['zanata_translation_document']
-        potfile = "%s/%s" % (tdir, po_basename)
+    # Create a temporary directory to hold data while we generate it
+    tdir = tempfile.mkdtemp()
 
-        with open(potfile, mode="wb") as f:
-            pofile.write_po(f, catalog, sort_by_file=True)
+    po_basename = "%s.pot" % ctx.parent.obj['zanata_translation_document']
+    potfile = "%s/%s" % (tdir, po_basename)
 
-        # Optionally upload the extracted strings directly to Zanata
-        if upload:
-            # Use the zanata-cli to upload the pot file
-            # It would be better to use the REST API directly here, but the XML
-            # payload format is not documented.
+    with open(potfile, mode="wb") as f:
+        pofile.write_po(f, catalog, sort_by_file=True)
 
-            # First ensure that the requested branch exists in Zanata
-            zanata_args = [
-                '/usr/bin/zanata-cli', '-B', '-e', 'put-version',
-                '--url', ctx.parent.obj['zanata_url'],
-                '--version-project', ctx.parent.obj['zanata_project'],
-                '--version-slug', ctx.parent.obj['branch'],
-                '--user-config', ctx.parent.obj['zanata_user_config']
-            ]
-            result = subprocess.run(zanata_args, capture_output=True)
-            if result.returncode or ctx.parent.obj['debug']:
-                print(result.stderr.decode('utf-8'))
-                print(result.stdout.decode('utf-8'))
-            if result.returncode:
-                sys.exit(1)
+    # Optionally upload the extracted strings directly to Zanata
+    if upload:
+        # Use the zanata-cli to upload the pot file
+        # It would be better to use the REST API directly here, but the XML
+        # payload format is not documented.
 
-            # Update the translatable strings for this branch
-            zanata_args = [
-                '/usr/bin/zanata-cli', '-B', '-e', 'push',
-                '--url', ctx.parent.obj['zanata_url'],
-                '--project', ctx.parent.obj['zanata_project'],
-                '--project-type', 'gettext',
-                '--project-version', ctx.parent.obj['branch'],
-                '--src-dir', tdir,
-                '--user-config', ctx.parent.obj['zanata_user_config']
-            ]
-            result = subprocess.run(zanata_args, capture_output=True)
-            if result.returncode or ctx.parent.obj['debug']:
-                print(result.stderr.decode('utf-8'))
-                print(result.stdout.decode('utf-8'))
-            if result.returncode:
-                sys.exit(2)
+        # First ensure that the requested branch exists in Zanata
+        zanata_args = [
+            '/usr/bin/zanata-cli', '-B', '-e', 'put-version',
+            '--url', ctx.parent.obj['zanata_url'],
+            '--version-project', ctx.parent.obj['zanata_project'],
+            '--version-slug', ctx.parent.obj['branch'],
+            '--user-config', ctx.parent.obj['zanata_user_config']
+        ]
+        result = subprocess.run(zanata_args, capture_output=True)
+        if result.returncode or ctx.parent.obj['debug']:
+            print(result.stderr.decode('utf-8'))
+            print(result.stdout.decode('utf-8'))
+        if result.returncode:
+            sys.exit(1)
 
-            print("Uploaded translatable strings for %s to Zanata" % (
-                ctx.parent.obj['branch']))
+        # Update the translatable strings for this branch
+        zanata_args = [
+            '/usr/bin/zanata-cli', '-B', '-e', 'push',
+            '--url', ctx.parent.obj['zanata_url'],
+            '--project', ctx.parent.obj['zanata_project'],
+            '--project-type', 'gettext',
+            '--project-version', ctx.parent.obj['branch'],
+            '--src-dir', tdir,
+            '--user-config', ctx.parent.obj['zanata_user_config']
+        ]
+        result = subprocess.run(zanata_args, capture_output=True)
+        if result.returncode or ctx.parent.obj['debug']:
+            print(result.stderr.decode('utf-8'))
+            print(result.stdout.decode('utf-8'))
+        if result.returncode:
+            sys.exit(2)
 
-        else:
-            # Move the temporary path to the current directory
-            shutil.move(potfile, po_basename)
-            print("Wrote extracted strings for %s to %s" % (ctx.obj['branch'],
-                                                            po_basename))
+        print("Uploaded translatable strings for %s to Zanata" % (
+            ctx.parent.obj['branch']))
+
+    else:
+        # Move the temporary path to the current directory
+        shutil.move(potfile, po_basename)
+        print("Wrote extracted strings for %s to %s" % (ctx.obj['branch'],
+                                                        po_basename))
+    # Clean up the temporary directory
+    shutil.rmtree(tdir)
 
 
 ##############################################################################
