@@ -196,34 +196,20 @@ def get_module_catalog_from_tags(session, tags, debug=False):
     return catalog
 
 
-def get_translated_locales(zanata_rest_url, zanata_project,
-                           zanata_project_version,
-                           debug=False):
-    # Get the statistics on the translation project for this version
-    stats_url = zanata_rest_url + "/stats/proj/%s/iter/%s" % (
-        zanata_project, zanata_project_version)
+def split_location(location):
+    location_data = location.split(';')
+    if len(location_data) < 3 or len(location_data) > 5:
+        print("Invalid location clue in translation data: %s" % (
+            location), file=sys.stderr)
 
-    r = requests.get(stats_url, headers={"Accept": "application/json"})
-    if r.status_code == 404:
-        print("Project '%s:%s' does not exist." % (
-            zanata_project, zanata_project_version),
-            file=sys.stderr)
-        raise NonexistentProjectError(zanata_project, zanata_project_version)
-    elif r.status_code != 200:
-        raise UnexpectedHTTPResponse(r.status_code, r.content)
+    module_name = location_data[0]
+    module_stream = location_data[1]
+    profile_name = None
+    translation_type = location_data[2]
+    if translation_type == 'profile':
+        profile_name = location_data[3]
 
-    # We will pull down information for any locale that is at least partially
-    # translated
-    translated_locales = [t["locale"]
-                          for t in r.json()['stats']
-                          if t["translated"] > 0]
-
-    if debug:
-        print("Available locales: ")
-        for locale in translated_locales:
-            print("* %s" % locale)
-
-    return translated_locales
+    return module_name, module_stream, profile_name, translation_type
 
 
 def get_modulemd_translations_from_catalog_dict(catalog_dict):
@@ -248,13 +234,8 @@ def get_modulemd_translations_from_catalog_dict(catalog_dict):
                 continue
 
             for location, _ in msg.locations:
-                split_location = location.split(';')
-                if len(split_location) < 3 or len(split_location) > 5:
-                    print("Invalid location clue in translation data: %s" % (
-                        location), file=sys.stderr)
-
-                module_name = split_location[0]
-                module_stream = split_location[1]
+                (module_name, module_stream, profile_name, translation_type)\
+                    = split_location(location)
 
                 try:
                     entry = entries[(module_name, module_stream, locale)]
@@ -262,16 +243,16 @@ def get_modulemd_translations_from_catalog_dict(catalog_dict):
                     entry = Modulemd.TranslationEntry.new(locale)
 
                 # Summary Translation
-                if split_location[2] == "summary":
+                if translation_type == "summary":
                     entry.set_summary(msg.string)
 
                 # Description Translation
-                elif split_location[2] == "description":
+                elif translation_type == "description":
                     entry.set_description(msg.string)
 
                 # Translation of profile descriptions
-                elif split_location[2] == "profile":
-                    entry.set_profile_description(split_location[3],
+                elif translation_type == "profile":
+                    entry.set_profile_description(profile_name,
                                                   msg.string)
 
                 entries[(module_name, module_stream, locale)] = entry
@@ -300,38 +281,17 @@ def get_modulemd_translations_from_catalog_dict(catalog_dict):
     return mmd_translations.values()
 
 
-def get_modulemd_translations(zanata_rest_url, zanata_project,
-                              os_branch, zanata_translation_file,
+def get_modulemd_translations(translation_files,
                               debug=False):
-    translated_locales = get_translated_locales(zanata_rest_url,
-                                                zanata_project,
-                                                os_branch,
-                                                debug)
 
     catalogs = dict()
-    for loc in translated_locales:
-        # Get the translation data for this locale
-        pofile_url = zanata_rest_url + \
-            "/file/translation/%s/%s/%s/po?docId=%s" % (
-                zanata_project, os_branch, loc,
-                zanata_translation_file)
-        r = requests.get(pofile_url,
-                         headers={"Accept": "application/octet-stream"})
-        if r.status_code != 200:
-            print("Could not retrieve translations for %s" % loc,
-                  file=sys.stderr)
-            continue
-
-        if debug:
-            print("PO content for locale '%s'" % loc)
-            print(r.text)
-
-        # Read the po file into a catalog, indexed by the locale
-        catalogs[loc] = pofile.read_po(
-            BytesIO(r.content),
-            domain=zanata_translation_file)
+    for f in translation_files:
+        with open(f, 'r') as infile:
+            catalog = pofile.read_po(infile)
+            catalogs[catalog.locale_identifier] = catalog
 
     translations = get_modulemd_translations_from_catalog_dict(catalogs)
+
     if debug:
         for translation in translations:
             print(translation.dumps())
