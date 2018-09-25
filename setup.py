@@ -19,7 +19,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='ModulemdTranslationHelpers',
-    version='0.3',
+    version='0.4',
     packages=['ModulemdTranslationHelpers'],
     url='https://github.com/fedora-modularity/ModulemdTranslationHelpers',
     license='MIT',
