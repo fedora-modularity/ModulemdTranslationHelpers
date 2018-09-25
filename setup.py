@@ -19,7 +19,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='ModulemdTranslationHelpers',
-    version='0.1',
+    version='0.2',
     packages=['ModulemdTranslationHelpers'],
     url='https://github.com/sgallagher/ModulemdTranslationHelpers',
     license='MIT',
