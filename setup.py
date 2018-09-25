@@ -21,7 +21,7 @@ setup(
     name='ModulemdTranslationHelpers',
     version='0.2',
     packages=['ModulemdTranslationHelpers'],
-    url='https://github.com/sgallagher/ModulemdTranslationHelpers',
+    url='https://github.com/fedora-modularity/ModulemdTranslationHelpers',
     license='MIT',
     author='Stephen Gallagher',
     author_email='sgallagh@redhat.com',
