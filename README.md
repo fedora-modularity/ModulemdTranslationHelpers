@@ -22,11 +22,13 @@ release (e.g. f29):
 ModulemdTranslationHelpers --branch f29 extract [--pot-file <path>]
 ```
 This will read all of the module metadata from the Koji build-system and
-convert the translatable strings to a Zanata-compatible gettext document.
-Specify the destination for the POT file with `--pot-file`.
+convert the translatable strings to a portable object template (`.pot`)
+document.
+
+Specify the destination for the output file with `--pot-file`.
 
  ### Produce modulemd-translations YAML
- To read the translated strings from Zanata and convert them into
+ To convert portable object (`.po`) files into
  modulemd-translations YAML documents that can be included in repodata:
  ```
  ModulemdTranslationHelpers --branch f29 generate_metadata \
