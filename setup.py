@@ -39,10 +39,10 @@ setup(
         'console_scripts': [
             'ModulemdTranslationHelpers=ModulemdTranslationHelpers.cli:cli'],
     },
-    classifiers=(
+    classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
         "Operating System :: POSIX :: Linux",
-    ),
+    ],
     include_package_data=True,
 )
