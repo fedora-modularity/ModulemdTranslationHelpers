@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# This file is part of modulemd-zanata
+# This file is part of ModulemdTranslationHelpers
 # Copyright (C) 2018 Stephen Gallagher
 #
 # Fedora-License-Identifier: MIT
