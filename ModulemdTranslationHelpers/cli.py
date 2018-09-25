@@ -18,19 +18,17 @@ import gi
 import koji
 import os
 import os.path
-import subprocess
-import sys
-import shutil
-import tempfile
 
 from babel.messages import pofile
 
 gi.require_version('Modulemd', '1.0')
 from gi.repository import Modulemd
 
-from mmdzanata import get_module_catalog_from_tags, get_modulemd_translations
-from mmdzanata.fedora import get_fedora_rawhide_version, \
-    get_tags_for_fedora_branch, KOJI_URL
+from ModulemdTranslationHelpers import get_module_catalog_from_tags
+from ModulemdTranslationHelpers import get_modulemd_translations
+from ModulemdTranslationHelpers.Fedora import KOJI_URL
+from ModulemdTranslationHelpers.Fedora import get_fedora_rawhide_version
+from ModulemdTranslationHelpers.Fedora import get_tags_for_fedora_branch
 
 ##############################################################################
 # Common options for all commands                                            #
@@ -66,7 +64,7 @@ def cli(ctx, debug, branch, koji_url):
 ##############################################################################
 
 ##############################################################################
-# `mmdzanata extract`                                                        #
+# `ModulemdTranslationHelpers extract`                                       #
 ##############################################################################
 
 
@@ -99,7 +97,7 @@ def extract(ctx, pot_file):
 
 
 ##############################################################################
-# `mmdzanata generate_metadata`                                              #
+# `ModulemdTranslationHelpers generate_metadata`                             #
 ##############################################################################
 
 @cli.command()
@@ -135,33 +133,6 @@ def generate_metadata(ctx, pofile_dir, yaml_file):
     yaml_file.write(Modulemd.dumps(sorted(translations)).encode('utf-8'))
 
     print("Wrote modulemd-translations YAML to %s" % yaml_file.name)
-
-
-@cli.command()
-
-@click.pass_context
-def experiment(ctx, pofile_dir):
-    """
-    Experiment with Babel
-    """
-
-    # Process all .po files in the provided directory
-    translation_files = [f for f in os.listdir(pofile_dir) if
-                         os.path.isfile((os.path.join(pofile_dir, f))) and
-                         f.endswith(".po")]
-
-    catalogs = dict()
-    for f in translation_files:
-        with open(f, 'r') as infile:
-            catalog = pofile.read_po(infile)
-            catalogs[catalog.locale_identifier] = catalog
-
-    translations = get_modulemd_translations_from_catalog_dict(
-        catalogs)
-
-    if ctx.parent.obj['debug']:
-        for translation in translations:
-            print(translation.dumps())
 
 
 if __name__ == "__main__":

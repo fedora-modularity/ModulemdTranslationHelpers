@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-# This file is part of mmdzanata
+# This file is part of ModulemdTranslationHelpers
 # Copyright (C) 2018 Stephen Gallagher
 #
 # Fedora-License-Identifier: MIT
@@ -18,25 +18,26 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
-    name='mmdzanata',
-    version='0.7',
-    packages=['mmdzanata', 'mmdzanata.fedora'],
-    url='https://github.com/sgallagher/modulemd-zanata',
+    name='ModulemdTranslationHelpers',
+    version='0.1',
+    packages=['ModulemdTranslationHelpers'],
+    url='https://github.com/sgallagher/ModulemdTranslationHelpers',
     license='MIT',
     author='Stephen Gallagher',
     author_email='sgallagh@redhat.com',
     description='Tools for working with translations of modulemd',
     long_description=long_description,
-    # mmdzanata also requires koji, libmodulemd and zanata-client which are not
-    # available on PyPI and must be installed separately. On Fedora, this is
-    # done with `dnf install koji libmodulemd zanata-client`
+    # ModulemdTranslationHelpers also requires koji and libmodulemd which
+    # are not available on PyPI and must be installed separately. On Fedora,
+    #  this is done with `dnf install koji libmodulemd`
     install_requires=[
         'click',
         'requests',
         'babel',
     ],
     entry_points={
-        'console_scripts': ['mmdzanata=mmdzanata.cli:cli'],
+        'console_scripts': [
+            'ModulemdTranslationHelpers=ModulemdTranslationHelpers.cli:cli'],
     },
     classifiers=(
         "Programming Language :: Python :: 3",
