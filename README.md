@@ -1,4 +1,4 @@
-# mmdzanata
+# ModulemdTranslationHelpers
 ## Prerequisites
 * [libmodulemd](https://github.com/fedora-modularity/libmodulemd)
 * [koji](https://pagure.io/koji)
