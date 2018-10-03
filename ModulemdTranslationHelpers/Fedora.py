@@ -26,7 +26,7 @@ def get_fedora_rawhide_version(session, debug=False):
             build_targets = session.getBuildTargets('rawhide')
         except requests.exceptions.ConnectionError:
             if debug:
-                print("Connection lost while retriving rawhide branch, "
+                print("Connection lost while retrieving rawhide branch, "
                       "retrying...",
                       file=sys.stderr)
         else:

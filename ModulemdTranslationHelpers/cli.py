@@ -15,9 +15,9 @@ from __future__ import print_function
 
 import click
 import gi
-import koji
 import os
 import os.path
+import xmlrpc.client
 
 from babel.messages import pofile
 
@@ -52,7 +52,7 @@ def cli(ctx, debug, branch, koji_url):
     ctx.obj = dict()
     ctx.obj['debug'] = debug
 
-    ctx.obj['session'] = koji.ClientSession(koji_url)
+    ctx.obj['session'] = xmlrpc.client.ServerProxy(koji_url)
 
     ctx.obj['branch'] = branch
 

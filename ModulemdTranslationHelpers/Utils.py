@@ -76,7 +76,7 @@ def get_latest_modules_in_tag(session, tag, debug=False):
     # times before failing.
     for attempt in range(5):
         try:
-            tagged = session.listTagged(tag, latest=False)
+            tagged = session.listTagged(tag)
         except requests.exceptions.ConnectionError:
             if debug:
                 print("Connection lost while retrieving builds for tag %s, "

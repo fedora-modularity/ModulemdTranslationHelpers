@@ -28,9 +28,9 @@ setup(
     description='Tools for working with translations of modulemd',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    # ModulemdTranslationHelpers also requires koji and libmodulemd which
-    # are not available on PyPI and must be installed separately. On Fedora,
-    #  this is done with `dnf install koji libmodulemd`
+    # ModulemdTranslationHelpers also requires libmodulemd which is
+    # not available on PyPI and must be installed separately. On Fedora,
+    # this is done with `dnf install libmodulemd`
     install_requires=[
         'click',
         'requests',
