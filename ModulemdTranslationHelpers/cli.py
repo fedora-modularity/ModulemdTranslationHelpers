@@ -125,9 +125,9 @@ def generate_metadata(ctx, pofile_dir, yaml_file):
     """
 
     # Process all .po files in the provided directory
-    translation_files = [f for f in os.listdir(pofile_dir) if
-                         os.path.isfile((os.path.join(pofile_dir, f))) and
-                         f.endswith(".po")]
+    translation_files = [os.path.join(pofile_dir, f) for f in os.listdir(
+        pofile_dir) if os.path.isfile((os.path.join(pofile_dir, f))) and
+        f.endswith(".po")]
     translations = get_modulemd_translations(translation_files)
 
     yaml_file.write(Modulemd.dumps(sorted(translations)).encode('utf-8'))
