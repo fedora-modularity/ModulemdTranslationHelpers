@@ -14,10 +14,10 @@
 # This module provides utility functions for interacting with Zanata
 # translations of Fedora-style modules.
 
-from __future__ import print_function
 
 import sys
 import gi
+import logging
 import requests
 
 from babel.messages import Catalog, pofile
@@ -62,7 +62,7 @@ class UnexpectedHTTPResponse(MmdZanataError):
         self.body = body
 
 
-def get_latest_modules_in_tag(session, tag, debug=False):
+def get_latest_modules_in_tag(session, tag):
     """
     Get the most-recently built versions of each (module,stream) pair from
     a Koji tag
@@ -77,10 +77,8 @@ def get_latest_modules_in_tag(session, tag, debug=False):
         try:
             tagged = session.listTagged(tag)
         except requests.exceptions.ConnectionError:
-            if debug:
-                print("Connection lost while retrieving builds for tag %s, "
-                      "retrying..." % tag,
-                      file=sys.stderr)
+            logging.warning("Connection lost while retrieving builds for tag "
+                            "%s, retrying..." % tag)
         else:
             # Succeeded this time, so break out of the loop
             break
@@ -106,13 +104,12 @@ def get_latest_modules_in_tag(session, tag, debug=False):
     return latest
 
 
-def get_module_catalog_from_tags(session, tags, debug=False):
+def get_module_catalog_from_tags(session, tags):
     """
     Construct a Babel translation source catalog from the contents of the
     provided tags.
     :param session: A Koji session
     :param tags: A set of Koji tags from which module metadata should be pulled
-    :param debug: Whether to print debugging information to the console
     :return: A babel.messages.Catalog containing extracted translatable strings
     from any modules in the provided tags. Raises an exception if any of the
     retrieved modulemd is invalid.
@@ -122,7 +119,7 @@ def get_module_catalog_from_tags(session, tags, debug=False):
 
     tagged_builds = []
     for tag in tags:
-        tagged_builds.extend(get_latest_modules_in_tag(session, tag, debug))
+        tagged_builds.extend(get_latest_modules_in_tag(session, tag))
 
     # Make the list unique since some modules may have multiple tags
     unique_builds = {}
@@ -136,15 +133,13 @@ def get_module_catalog_from_tags(session, tags, debug=False):
             try:
                 build = session.getBuild(build_id)
             except requests.exceptions.ConnectionError:
-                if debug:
-                    print("Connection lost while processing buildId %s, "
-                          "retrying..." % build_id,
-                          file=sys.stderr)
+                logging.warning("Connection lost while processing buildId %s, "
+                                "retrying..." % build_id)
             else:
                 # Succeeded this time, so break out of the loop
                 break
-        if debug:
-            print("Processing %s:%s" % (build['package_name'], build['nvr']))
+        logging.info("Processing %s:%s" % (build['package_name'],
+                                           build['nvr']))
 
         modulemds = Modulemd.objects_from_string(
             build['extra']['typeinfo']['module']['modulemd_str'])
@@ -198,8 +193,10 @@ def get_module_catalog_from_tags(session, tags, debug=False):
 def split_location(location):
     location_data = location.split(';')
     if len(location_data) < 3 or len(location_data) > 5:
-        print("Invalid location clue in translation data: %s" % (
-            location), file=sys.stderr)
+        logging.warn("Invalid location clue in translation data: %s" % (
+            location))
+        raise IOError("Invalid location clue in translation data: %s" % (
+            location))
 
     module_name = location_data[0]
     module_stream = location_data[1]
@@ -233,8 +230,12 @@ def get_modulemd_translations_from_catalog_dict(catalog_dict):
                 continue
 
             for location, _ in msg.locations:
-                (module_name, module_stream, profile_name, translation_type)\
-                    = split_location(location)
+                try:
+                    (module_name, module_stream, profile_name, translation_type)\
+                        = split_location(location)
+                except IOError:
+                    # Skip any message with invalid location information
+                    continue
 
                 try:
                     entry = entries[(module_name, module_stream, locale)]
@@ -280,8 +281,7 @@ def get_modulemd_translations_from_catalog_dict(catalog_dict):
     return mmd_translations.values()
 
 
-def get_modulemd_translations(translation_files,
-                              debug=False):
+def get_modulemd_translations(translation_files):
 
     catalogs = dict()
     for f in translation_files:
@@ -291,8 +291,7 @@ def get_modulemd_translations(translation_files,
 
     translations = get_modulemd_translations_from_catalog_dict(catalogs)
 
-    if debug:
-        for translation in translations:
-            print(translation.dumps())
+    for translation in translations:
+        logging.debug(translation.dumps())
 
     return translations

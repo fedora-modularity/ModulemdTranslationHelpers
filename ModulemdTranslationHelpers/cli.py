@@ -15,6 +15,7 @@ from __future__ import print_function
 
 import click
 import gi
+import logging
 import os
 import os.path
 import xmlrpc.client
@@ -50,7 +51,8 @@ def cli(ctx, debug, branch, koji_url):
     """Tools for managing modularity translations."""
 
     ctx.obj = dict()
-    ctx.obj['debug'] = debug
+    if debug:
+        logging.basicConfig(level=logging.DEBUG)
 
     ctx.obj['session'] = xmlrpc.client.ServerProxy(koji_url)
 
@@ -87,8 +89,7 @@ def extract(ctx, pot_file):
 
     catalog = get_module_catalog_from_tags(
         ctx.parent.obj['session'], get_tags_for_fedora_branch(
-            ctx.parent.obj['branch']),
-        debug=ctx.parent.obj['debug'])
+            ctx.parent.obj['branch']))
 
     pofile.write_po(pot_file, catalog, sort_by_file=True)
 
@@ -127,8 +128,7 @@ def generate_metadata(ctx, pofile_dir, yaml_file):
     translation_files = [f for f in os.listdir(pofile_dir) if
                          os.path.isfile((os.path.join(pofile_dir, f))) and
                          f.endswith(".po")]
-    translations = get_modulemd_translations(translation_files,
-                                             debug=ctx.parent.obj['debug'])
+    translations = get_modulemd_translations(translation_files)
 
     yaml_file.write(Modulemd.dumps(sorted(translations)).encode('utf-8'))
 

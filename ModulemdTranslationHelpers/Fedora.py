@@ -13,22 +13,21 @@
 
 from __future__ import print_function
 
+import logging
 import requests
 
 KOJI_URL = 'https://koji.fedoraproject.org/kojihub'
 
 
-def get_fedora_rawhide_version(session, debug=False):
+def get_fedora_rawhide_version(session):
     # Koji sometimes disconnects for no apparent reason. Retry up to 5
     # times before failing.
     for attempt in range(5):
         try:
             build_targets = session.getBuildTargets('rawhide')
         except requests.exceptions.ConnectionError:
-            if debug:
-                print("Connection lost while retrieving rawhide branch, "
-                      "retrying...",
-                      file=sys.stderr)
+            logging.warning("Connection lost while retrieving rawhide "
+                            "branch, retrying...")
         else:
             # Succeeded this time, so break out of the loop
             break
