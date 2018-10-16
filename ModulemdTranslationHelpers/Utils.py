@@ -22,7 +22,6 @@ import requests
 
 from babel.messages import Catalog, pofile
 from datetime import datetime
-from io import BytesIO
 
 gi.require_version('Modulemd', '1.0')
 from gi.repository import Modulemd
