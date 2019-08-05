@@ -2,7 +2,6 @@
 *.pyo
 *.pot
 *.po
-*.yaml
 *~
 *.swp
 .idea/*

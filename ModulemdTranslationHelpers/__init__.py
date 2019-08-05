@@ -11,6 +11,6 @@
 # For more information on free software, see
 # <https://www.gnu.org/philosophy/free-sw.en.html>.
 
-from ModulemdTranslationHelpers.Utils import get_module_catalog_from_tags
-from ModulemdTranslationHelpers.Utils import get_modulemd_translations
+from ModulemdTranslationHelpers.Utils import get_translation_catalog_from_index
+from ModulemdTranslationHelpers.Utils import get_modulemd_translations_from_catalog
 import ModulemdTranslationHelpers.Fedora

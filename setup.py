@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 # This file is part of ModulemdTranslationHelpers
-# Copyright (C) 2018 Stephen Gallagher
+# Copyright (C) 2018-2019 Stephen Gallagher
 #
 # Fedora-License-Identifier: MIT
 # SPDX-2.0-License-Identifier: MIT
@@ -19,7 +19,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='ModulemdTranslationHelpers',
-    version='0.6',
+    version='1.0',
     packages=['ModulemdTranslationHelpers'],
     url='https://github.com/fedora-modularity/ModulemdTranslationHelpers',
     license='MIT',
@@ -40,6 +40,8 @@ setup(
         'console_scripts': [
             'ModulemdTranslationHelpers=ModulemdTranslationHelpers.cli:cli'],
     },
+    test_suite='nose.collector',
+    tests_require=['nose'],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

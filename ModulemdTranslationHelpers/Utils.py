@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # This file is part of ModulemdTranslationHelpers
-# Copyright (C) 2018 Stephen Gallagher
+# Copyright (C) 2018-2019 Stephen Gallagher
 #
 # Fedora-License-Identifier: MIT
 # SPDX-2.0-License-Identifier: MIT
@@ -10,56 +10,17 @@
 # For more information on the license, see COPYING.
 # For more information on free software, see
 # <https://www.gnu.org/philosophy/free-sw.en.html>.
-#
-# This module provides utility functions for interacting with Zanata
-# translations of Fedora-style modules.
-
 
 import sys
-import gi
 import logging
+import gi
 import requests
-
 from babel.messages import Catalog, pofile
 from datetime import datetime
+from collections import defaultdict
 
-gi.require_version('Modulemd', '1.0')
+gi.require_version('Modulemd', '2.0')  # noqa
 from gi.repository import Modulemd
-
-
-##############################################################################
-# Exceptions                                                                 #
-##############################################################################
-
-
-class MmdZanataError(Exception):
-    pass
-
-
-class NonexistentProjectError(MmdZanataError):
-
-    def __init__(self, project, version):
-        """
-        Exception thrown when the user has requested a Zanata project that
-        does not exist
-        :param project: The nonexistent project name
-        :param version: The version of the project in Zanata
-        """
-        self.project = project
-        self.version = version
-        self.message = "The project %s does not exist in Zanata" % project
-
-
-class UnexpectedHTTPResponse(MmdZanataError):
-
-    def __init__(self, status_code, body):
-        """
-        Exception thrown when an unexpected response is received from an HTTP
-        request.
-        :param body: The response body
-        """
-        self.status_code = status_code
-        self.body = body
 
 
 def get_latest_modules_in_tag(session, tag):
@@ -77,8 +38,9 @@ def get_latest_modules_in_tag(session, tag):
         try:
             tagged = session.listTagged(tag)
         except requests.exceptions.ConnectionError:
-            logging.warning("Connection lost while retrieving builds for tag "
-                            "%s, retrying..." % tag)
+            logging.warning(
+                "Connection lost while retrieving builds for tag %s, "
+                "retrying..." % tag)
         else:
             # Succeeded this time, so break out of the loop
             break
@@ -104,18 +66,14 @@ def get_latest_modules_in_tag(session, tag):
     return latest
 
 
-def get_module_catalog_from_tags(session, tags):
+def get_index_from_tags(session, tags):
     """
-    Construct a Babel translation source catalog from the contents of the
-    provided tags.
+    Construct a ModuleIndex object from the contents of the provided tags.
     :param session: A Koji session
     :param tags: A set of Koji tags from which module metadata should be pulled
-    :return: A babel.messages.Catalog containing extracted translatable strings
-    from any modules in the provided tags. Raises an exception if any of the
+    :return: A ModuleIndex object. Raises an exception if any of the
     retrieved modulemd is invalid.
     """
-
-    catalog = Catalog(project="fedora-modularity-translations")
 
     tagged_builds = []
     for tag in tags:
@@ -126,6 +84,7 @@ def get_module_catalog_from_tags(session, tags):
     for build in tagged_builds:
         unique_builds[build['id']] = build
 
+    index = Modulemd.ModuleIndex.new()
     for build_id in unique_builds.keys():
         # Koji sometimes disconnects for no apparent reason. Retry up to 5
         # times before failing.
@@ -133,165 +92,145 @@ def get_module_catalog_from_tags(session, tags):
             try:
                 build = session.getBuild(build_id)
             except requests.exceptions.ConnectionError:
-                logging.warning("Connection lost while processing buildId %s, "
-                                "retrying..." % build_id)
+                logging.warning(
+                    "Connection lost while processing buildId %s, "
+                    "retrying..." % build_id)
             else:
                 # Succeeded this time, so break out of the loop
                 break
-        logging.info("Processing %s:%s" % (build['package_name'],
-                                           build['nvr']))
 
-        modulemds = Modulemd.objects_from_string(
-            build['extra']['typeinfo']['module']['modulemd_str'])
+        logging.debug(
+            "Processing %s:%s" %
+            (build['package_name'], build['nvr']))
+        ret, failures = index.update_from_string(
+            build['extra']['typeinfo']['module']['modulemd_str'], True)
 
-        # We should only get a single modulemd document from Koji
-        if len(modulemds) != 1:
-            raise ValueError("Koji build %s returned multiple modulemd YAML "
-                             "documents." % build['nvr'])
+    return index
 
-        mmd = modulemds[0]
 
-        # Process the summary
-        msg = catalog.get(mmd.props.summary)
-        if msg:
-            locations = msg.locations
-        else:
-            locations = []
-        locations.append(("%s;%s;summary" % (
-            mmd.props.name, mmd.props.stream), 1))
-        catalog.add(mmd.props.summary, locations=locations)
+def get_translation_catalog_from_index(index, project_name):
+    # Get all Modulemd.Module object names
+    module_names = index.get_module_names()
 
-        # Process the description
-        msg = catalog.get(mmd.props.description)
-        if msg:
-            locations = msg.locations
-        else:
-            locations = []
-        locations.append(("%s;%s;description" % (
-            mmd.props.name, mmd.props.stream), 2))
-        catalog.add(mmd.props.description, locations=locations)
+    # Create a list containing highest version streams of a module
+    final_streams = list()
 
-        # Get any profile descriptions
-        for profile_name, profile in modulemds[0].peek_profiles().items():
-            if profile.props.description:
-                msg = catalog.get(profile.props.description)
-                if msg:
-                    locations = msg.locations
-                else:
-                    locations = []
+    for module_name in module_names:
+        module = index.get_module(module_name)
+        stream_names = module.get_stream_names()
 
-                locations.append(("%s;%s;profile;%s" % (
-                    mmd.props.name,
-                    mmd.props.stream,
-                    profile.props.name),
-                    3))
-                catalog.add(profile.props.description, locations=locations)
+        for stream_name in stream_names:
+            # The first item returned is guaranteed to be the highest version
+            # of that stream in that module.
+            stream = module.search_streams(stream_name, 0)[0]
+            final_streams.append(stream)
+
+    # A dictionary to store:
+    # key: all translatable strings
+    # value: their respective locations
+    translation_dict = defaultdict(list)
+
+    for stream in final_streams:
+        # Process description
+        description = stream.get_description("C")
+        location = ("{};{};description").format(
+            stream.props.module_name, stream.props.stream_name)
+        translation_dict[description].append(location)
+
+        # Process summary
+        summary = stream.get_summary("C")
+        location = ("{};{};summary").format(
+            stream.props.module_name, stream.props.stream_name)
+        translation_dict[summary].append(location)
+
+        # Process profile descriptions(sometimes NULL)
+        profile_names = stream.get_profile_names()
+        if(profile_names):
+            for pro_name in profile_names:
+                profile = stream.get_profile(pro_name)
+
+                profile_desc = profile.get_description("C")
+                location = ("{};{};profile;{}").format(
+                    stream.props.module_name, stream.props.stream_name, pro_name)
+                translation_dict[profile_desc].append(location)
+
+    catalog = Catalog(project=project_name)
+
+    for translatable_string, locations in translation_dict.items():
+        catalog.add(translatable_string, locations=locations)
 
     return catalog
 
 
-def split_location(location):
-    location_data = location.split(';')
-    if len(location_data) < 3 or len(location_data) > 5:
-        logging.warn("Invalid location clue in translation data: %s" % (
-            location))
-        raise IOError("Invalid location clue in translation data: %s" % (
-            location))
+def get_modulemd_translations_from_catalog(catalogs, index):
+    # Dictionary `translations` contains information from catalog like:
+    # Key: (module_name, stream_name)
+    # Value: Translation object containing TranslationEntry of various locales
+    translations = dict()
 
-    module_name = location_data[0]
-    module_stream = location_data[1]
-    profile_name = None
-    translation_type = location_data[2]
-    if translation_type == 'profile':
-        profile_name = location_data[3]
-
-    return module_name, module_stream, profile_name, translation_type
-
-
-def get_modulemd_translations_from_catalog_dict(catalog_dict):
     now = datetime.utcnow()
-    modified = int("%04d%02d%02d%02d%02d%02d" % (
-        now.date().year,
-        now.date().month,
-        now.date().day,
-        now.time().hour,
-        now.time().minute,
-        now.time().second
-    ))
+    modified = int(now.strftime("%Y%m%d%H%M%S"))
 
-    # Translation entries keyed by name, stream and locale
-    entries = dict()
+    # Handling one language translations at a time
+    for catalog in catalogs:
+        # Dictionary `data` contains information from catalog like:
+        # Key: (module_name, stream_name)
+        # Value: TranslationEntry object of a locale
+        data = dict()
 
-    mmd_translations = dict()
-    for locale, catalog in catalog_dict.items():
         for msg in catalog:
-            if not msg.locations or not msg.string:
-                # Skip any message that doesn't actually contain a message
-                continue
-
             for location, _ in msg.locations:
-                try:
-                    (module_name, module_stream, profile_name, translation_type)\
-                        = split_location(location)
-                except IOError:
-                    # Skip any message with invalid location information
-                    continue
+                (module_name, stream_name, string_type,
+                 profile_name) = split_location(location)
 
                 try:
-                    entry = entries[(module_name, module_stream, locale)]
+                    entry = data[(module_name, stream_name)]
                 except KeyError:
-                    entry = Modulemd.TranslationEntry.new(locale)
+                    entry = Modulemd.TranslationEntry.new(
+                        str(catalog.locale))
 
-                # Summary Translation
-                if translation_type == "summary":
+                if string_type == "summary":
                     entry.set_summary(msg.string)
-
-                # Description Translation
-                elif translation_type == "description":
+                elif string_type == "description":
                     entry.set_description(msg.string)
+                else:
+                    entry.set_profile_description(profile_name, msg.string)
 
-                # Translation of profile descriptions
-                elif translation_type == "profile":
-                    entry.set_profile_description(profile_name,
-                                                  msg.string)
+                data[(module_name, stream_name)] = entry
 
-                entries[(module_name, module_stream, locale)] = entry
+        for (module_name, stream_name), entry in data.items():
+            try:
+                mmd_translation = translations[(module_name, stream_name)]
+            except KeyError:
+                mmd_translation = Modulemd.Translation.new(
+                    1, module_name, stream_name, modified)
 
-    for (module_name, module_stream, locale), entry in entries.items():
-        # Validate that the translation entry has both summary and description
-        # which are mandatory.
-        if not entry.get_summary() or not entry.get_description():
-            continue
+            mmd_translation.set_translation_entry(entry)
+            translations[(module_name, stream_name)] = mmd_translation
 
-        # Otherwise, add or update the translation for this module and stream
+    for (module_name, stream_name), mmd_translation in translations.items():
         try:
-            mmdtranslation = mmd_translations[(module_name,
-                                               module_stream)]
-        except KeyError:
-            mmdtranslation = Modulemd.Translation.new_full(
-                module_name=module_name,
-                module_stream=module_stream,
-                mdversion=1,
-                modified=modified
-            )
+            ret = index.add_translation(mmd_translation)
+        except GLib.Error:
+            logging.warning(
+                "The translation for this %s:%s could not be added",
+                module_name,
+                stream_name)
 
-        mmdtranslation.add_entry(entry)
-        mmd_translations[(module_name, module_stream)] = mmdtranslation
-
-    return mmd_translations.values()
+    return None
 
 
-def get_modulemd_translations(translation_files):
+def split_location(location):
+    # Split maximum three times
+    props = location.split(";", 3)
 
-    catalogs = dict()
-    for f in translation_files:
-        with open(f, 'r') as infile:
-            catalog = pofile.read_po(infile)
-            catalogs[catalog.locale_identifier] = catalog
+    module_name = props[0]
+    stream_name = props[1]
+    string_type = props[2]
 
-    translations = get_modulemd_translations_from_catalog_dict(catalogs)
+    if string_type == "profile":
+        profile_name = props[3]
+    else:
+        profile_name = None
 
-    for translation in translations:
-        logging.debug(translation.dumps())
-
-    return translations
+    return module_name, stream_name, string_type, profile_name

@@ -11,6 +11,12 @@
 # For more information on free software, see
 # <https://www.gnu.org/philosophy/free-sw.en.html>.
 
+from ModulemdTranslationHelpers.Fedora import get_tags_for_fedora_branch
+from ModulemdTranslationHelpers.Fedora import get_fedora_rawhide_version
+from ModulemdTranslationHelpers.Fedora import KOJI_URL
+from ModulemdTranslationHelpers import get_modulemd_translations
+from ModulemdTranslationHelpers import get_module_catalog_from_tags
+from gi.repository import Modulemd
 from __future__ import print_function
 
 import click
@@ -23,13 +29,7 @@ import xmlrpc.client
 from babel.messages import pofile
 
 gi.require_version('Modulemd', '1.0')
-from gi.repository import Modulemd
 
-from ModulemdTranslationHelpers import get_module_catalog_from_tags
-from ModulemdTranslationHelpers import get_modulemd_translations
-from ModulemdTranslationHelpers.Fedora import KOJI_URL
-from ModulemdTranslationHelpers.Fedora import get_fedora_rawhide_version
-from ModulemdTranslationHelpers.Fedora import get_tags_for_fedora_branch
 
 ##############################################################################
 # Common options for all commands                                            #
