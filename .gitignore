@@ -1,7 +1,5 @@
 *.pyc
 *.pyo
-*.pot
-*.po
 *~
 *.swp
 .idea/*
