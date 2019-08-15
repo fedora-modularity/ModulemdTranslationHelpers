@@ -133,30 +133,33 @@ def get_translation_catalog_from_index(index, project_name):
     for stream in final_streams:
         # Process description
         description = stream.get_description("C")
-        location = ("{};{};description").format(
-            stream.props.module_name, stream.props.stream_name)
-        translation_dict[description].append(location)
+        if description is not None:
+            location = (("{};{};description").format(
+                stream.props.module_name, stream.props.stream_name), 2)
+            translation_dict[description].append(location)
 
         # Process summary
         summary = stream.get_summary("C")
-        location = ("{};{};summary").format(
-            stream.props.module_name, stream.props.stream_name)
-        translation_dict[summary].append(location)
+        if summary is not None:
+            location = (("{};{};summary").format(
+                stream.props.module_name, stream.props.stream_name), 1)
+            translation_dict[summary].append(location)
 
         # Process profile descriptions(sometimes NULL)
         profile_names = stream.get_profile_names()
         if(profile_names):
             for pro_name in profile_names:
                 profile = stream.get_profile(pro_name)
-
                 profile_desc = profile.get_description("C")
-                location = ("{};{};profile;{}").format(
-                    stream.props.module_name, stream.props.stream_name, pro_name)
-                translation_dict[profile_desc].append(location)
+                if profile_desc is not None:
+                    location = (("{};{};profile;{}").format(
+                        stream.props.module_name, stream.props.stream_name, pro_name), 3)
+                    translation_dict[profile_desc].append(location)
 
     catalog = Catalog(project=project_name)
 
     for translatable_string, locations in translation_dict.items():
+        logging.debug("This is a translatable_string: %s" % translatable_string)
         catalog.add(translatable_string, locations=locations)
 
     return catalog

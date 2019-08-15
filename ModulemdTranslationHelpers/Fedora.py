@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # This file is part of ModulemdTranslationHelpers
-# Copyright (C) 2018 Stephen Gallagher
+# Copyright (C) 2018-2019 Stephen Gallagher
 #
 # Fedora-License-Identifier: MIT
 # SPDX-2.0-License-Identifier: MIT
@@ -13,8 +13,8 @@
 
 from __future__ import print_function
 
-import logging
 import requests
+import logging
 
 KOJI_URL = 'https://koji.fedoraproject.org/kojihub'
 
@@ -26,8 +26,8 @@ def get_fedora_rawhide_version(session):
         try:
             build_targets = session.getBuildTargets('rawhide')
         except requests.exceptions.ConnectionError:
-            logging.warning("Connection lost while retrieving rawhide "
-                            "branch, retrying...")
+            logging.warning(
+                "Connection lost while retrieving rawhide branch, retrying...")
         else:
             # Succeeded this time, so break out of the loop
             break

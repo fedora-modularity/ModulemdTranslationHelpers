@@ -111,7 +111,7 @@ class TestTranslationHelpers(TestCase):
 
         # Check if each translatable string is mapped to its correct location
         for msg in catalog:
-            for location in msg.locations:
+            for location, _ in msg.locations:
                 (module_name, stream_name, string_type,
                  profile_name) = Utils.split_location(location)
 
@@ -131,8 +131,8 @@ class TestTranslationHelpers(TestCase):
                     self.assertIsNotNone(profile)
                     self.assertEqual(profile.get_description("C"), msg.id)
 
-        # There are 75 unique summaries and descriptions in f29.yaml
-        self.assertEqual(len(catalog), 75)
+        # There are 74 unique, non-null summaries and descriptions in f29.yaml
+        self.assertEqual(len(catalog), 74)
 
     def test_translations_from_catalog(self):
         translation_files = [
