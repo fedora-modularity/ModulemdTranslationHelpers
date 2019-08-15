@@ -43,16 +43,16 @@ Specify the destination for the output file with `--pot-file`.
 ## API
 ### ModulemdTranslationHelpers
 The ModulemdTranslationHelpers package has two primary functions:
-* get_module_catalog_from_tags()
-* get_modulemd_translations()
+* get_translation_catalog_from_index()
+* get_modulemd_translations_from_catalog()
 
-#### ModulemdTranslationHelpers.get_module_catalog_from_tags()
+#### ModulemdTranslationHelpers.get_translation_catalog_from_index()
 This returns a `babel.message.Catalog` object containing all of the
 translatable strings from any module tagged with one of the passed tags. It
 can be passed to `babel.messages.pofile.write_po()` to create a portable
 object template (`.pot`) file.
 
-#### ModulemdTranslationHelpers.get_modulemd_translations()
+#### ModulemdTranslationHelpers.get_modulemd_translations_from_catalog()
 This returns an iterable of modulemd-translation objects generated from a
 set of paths to portable object (`.po`) files containing translation
 information.
