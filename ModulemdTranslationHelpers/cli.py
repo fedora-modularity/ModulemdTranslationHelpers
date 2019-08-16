@@ -108,41 +108,48 @@ def extract(ctx, pot_file, project_name):
 # `ModulemdTranslationHelpers generate_metadata`                             #
 ##############################################################################
 
-# @cli.command()
+@cli.command()
 
-# @click.option('-d', '--pofile-dir',
-#               default='.',
-#               help="Path to a directory containing portable object (.po) "
-#                    "translation files",
-#               type=click.Path(exists=True, dir_okay=True, resolve_path=True,
-#                               readable=True))
+@click.option('-d', '--pofile-dir',
+              default='.',
+              help="Path to a directory containing portable object (.po) "
+                   "translation files",
+              type=click.Path(exists=True, dir_okay=True, resolve_path=True,
+                              readable=True))
 
-# @click.option('-y', '--yaml-file',
-#               default='fedora-modularity-translations.yaml',
-#               type=click.File(mode='wb', atomic=True, lazy=True),
-#               show_default=True,
-#               metavar="<PATH>",
-#               help="Path to the YAML file to hold the translated strings in "
-#                    "modulemd-translations format.")
+@click.option('-y', '--yaml-file',
+              default='fedora-modularity-translations.yaml',
+              type=click.File(mode='wb', atomic=True, lazy=True),
+              show_default=True,
+              metavar="<PATH>",
+              help="Path to the YAML file to hold the modified modulemd-index containing"
+                   "the translated strings.")
 
-# @click.pass_context
-# def generate_metadata(ctx, pofile_dir, yaml_file):
-#     """
-#     Generate modulemd-translations YAML.
-#     :return: 0 on successful creation of modulemd-translation,
-#     nonzero on failure.
-#     """
+@click.pass_context
+def generate_metadata(ctx, pofile_dir, yaml_file):
+    """
+    Add translations to modulemd-index inplace.
+    :return: 0 on successful creation of modulemd-translation,
+    nonzero on failure.
+    """
+    index = Utils.get_index_from_tags(
+      ctx.parent.obj['session'], Fedora.get_tags_for_fedora_branch(
+        ctx.parent.obj['branch']))
 
-#     # Process all .po files in the provided directory
-#     translation_files = [f for f in os.listdir(pofile_dir) if
-#                          os.path.isfile((os.path.join(pofile_dir, f))) and
-#                          f.endswith(".po")]
-#     translations = Utils.get_modulemd_translations(translation_files,
-#                                              debug=ctx.parent.obj['debug'])
+    # Process all .po files in the provided directory
+    translation_files = [f for f in os.listdir(pofile_dir) if
+                         os.path.isfile((os.path.join(pofile_dir, f))) and
+                         f.endswith(".po")]
 
-#     yaml_file.write(Modulemd.dumps(sorted(translations)).encode('utf-8'))
+    catalogs = list()
+    for f in translation_files:
+      with open(f, 'r') as infile:
+        catalog = pofile.read_po(infile)
+        catalogs.append(catalog)
 
-#     print("Wrote modulemd-translations YAML to %s" % yaml_file.name)
+    Utils.get_modulemd_translations_from_catalog(catalogs, index)
+    yaml_file.write(index.dump_to_string().encode('utf-8'))
+    print("Wrote modified modulemd-index YAML to %s" % yaml_file.name)
 
 
 if __name__ == "__main__":
