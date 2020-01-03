@@ -9,9 +9,14 @@ dnf install libmodulemd koji
 ```
 
 ## Installation
-With the prerequisites installed, the latest version can be installed with
-`pip install ModulemdTranslationHelpers` or on Fedora 28+ with `dnf install
-python3-ModulemdTranslationHelpers` (recommended).
+With the prerequisites installed, the latest version can be installed with:
+```
+pip install ModulemdTranslationHelpers
+```
+or on Fedora 28+ (recommended) with:
+```
+dnf install python3-ModulemdTranslationHelpers 
+``` 
 
 ## CLI Usage
 
@@ -41,10 +46,11 @@ Specify the destination for the output file with `--pot-file`.
  write the modulemd YAML to `yaml-file`.
 
 ## API
+
 ### ModulemdTranslationHelpers
 The ModulemdTranslationHelpers package has two primary functions:
-* get_translation_catalog_from_index()
-* get_modulemd_translations_from_catalog()
+* `get_translation_catalog_from_index()`
+* `get_modulemd_translations_from_catalog()`
 
 #### ModulemdTranslationHelpers.get_translation_catalog_from_index()
 This returns a `babel.message.Catalog` object containing all of the
